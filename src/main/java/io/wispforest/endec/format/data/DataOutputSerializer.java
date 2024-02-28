@@ -73,12 +73,12 @@ public class DataOutputSerializer<D extends DataOutput> implements Serializer<D>
 
     @Override
     public void writeVarInt(int value) {
-        VarUtils.writeInt(this::writeByte);
+        VarUtils.writeInt(value, this::writeByte);
     }
 
     @Override
     public void writeVarLong(long value) {
-        VarUtils.writeLong(this::writeByte);
+        VarUtils.writeLong(value, this::writeByte);
     }
 
     // ---

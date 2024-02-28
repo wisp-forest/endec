@@ -1,6 +1,5 @@
 package io.wispforest.endec.format.data;
 
-
 import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.SerializationAttribute;
