@@ -7,29 +7,20 @@ import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
 import java.math.BigDecimal;
-import java.util.*;
-import java.util.function.Function;
+import java.util.Iterator;
+import java.util.Optional;
 
 public class JsonDeserializer extends RecursiveDeserializer<JsonElement> implements SelfDescribedDeserializer<JsonElement> {
 
-    private static final Set<SerializationAttribute> ATTRIBUTES = EnumSet.of(
-            SerializationAttribute.SELF_DESCRIBING,
-            SerializationAttribute.HUMAN_READABLE
-    );
-
     protected JsonDeserializer(JsonElement serialized) {
         super(serialized);
+
+        this.set(DataToken.SELF_DESCRIBING, null);
+        this.set(DataToken.HUMAN_READABLE, null);
     }
 
     public static JsonDeserializer of(JsonElement serialized) {
         return new JsonDeserializer(serialized);
-    }
-
-    // ---
-
-    @Override
-    public Set<SerializationAttribute> attributes() {
-        return ATTRIBUTES;
     }
 
     // ---

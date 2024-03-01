@@ -1,43 +1,36 @@
 package io.wispforest.endec.format.forwarding;
 
-import com.google.common.collect.ImmutableSet;
+import io.wispforest.endec.DataTokenHolder;
 import io.wispforest.endec.Endec;
-import io.wispforest.endec.SerializationAttribute;
+import io.wispforest.endec.ExtraDataSerializer;
 import io.wispforest.endec.Serializer;
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 
-public class ForwardingSerializer<T> implements Serializer<T> {
+public class ForwardingSerializer<T> extends ExtraDataSerializer<T> {
 
-    private final Set<SerializationAttribute> attributes;
     private final Serializer<T> delegate;
 
-    protected ForwardingSerializer(Serializer<T> delegate, Set<SerializationAttribute> attributes) {
+    protected ForwardingSerializer(Serializer<T> delegate) {
         this.delegate = delegate;
-        this.attributes = attributes;
     }
 
     public Serializer<T> delegate() {
         return this.delegate;
     }
 
-    public static <T> ForwardingSerializer<T> of(Serializer<T> delegate, SerializationAttribute... assumedAttributes) {
-        return new ForwardingSerializer<>(
-                delegate,
-                ImmutableSet.<SerializationAttribute>builder()
-                        .addAll(delegate.attributes())
-                        .add(assumedAttributes)
-                        .build()
-        );
+    public static <T> ForwardingSerializer<T> of(Serializer<T> delegate, Stream<DataTokenHolder<?>> tokens) {
+        var forwardingSerializer = new ForwardingSerializer<>(delegate);
+
+        tokens.forEach(holder -> holder.consume(forwardingSerializer::set));
+
+        return forwardingSerializer;
     }
+
 
     //--
-
-    @Override
-    public Set<SerializationAttribute> attributes() {
-        return attributes;
-    }
 
     @Override
     public void writeByte(byte value) {

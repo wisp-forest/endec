@@ -1,23 +1,23 @@
 package io.wispforest.endec.format.json;
 
 import blue.endless.jankson.*;
+import io.wispforest.endec.DataToken;
 import io.wispforest.endec.Endec;
-import io.wispforest.endec.SerializationAttribute;
 import io.wispforest.endec.Serializer;
 import io.wispforest.endec.util.RecursiveSerializer;
 
-import java.util.EnumSet;
 import java.util.Optional;
-import java.util.Set;
 
 public class JsonSerializer extends RecursiveSerializer<JsonElement> {
 
-    private static final Set<SerializationAttribute> ATTRIBUTES = EnumSet.allOf(SerializationAttribute.class);
     private JsonElement prefix;
 
     protected JsonSerializer(JsonElement prefix) {
         super(null);
         this.prefix = prefix;
+
+        this.set(DataToken.SELF_DESCRIBING, null);
+        this.set(DataToken.HUMAN_READABLE, null);
     }
 
     public static JsonSerializer of(JsonElement prefix) {
@@ -26,13 +26,6 @@ public class JsonSerializer extends RecursiveSerializer<JsonElement> {
 
     public static JsonSerializer of() {
         return of(null);
-    }
-
-    // ---
-
-    @Override
-    public Set<SerializationAttribute> attributes() {
-        return ATTRIBUTES;
     }
 
     // ---

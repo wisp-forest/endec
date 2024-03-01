@@ -1,20 +1,17 @@
 package io.wispforest.endec.format.bytebuf;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufUtil;
 import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
-import io.wispforest.endec.SerializationAttribute;
+import io.wispforest.endec.ExtraDataDeserializer;
 import io.wispforest.endec.util.VarUtils;
-
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
 
-public class ByteBufDeserializer implements Deserializer<ByteBuf> {
+public class ByteBufDeserializer extends ExtraDataDeserializer<ByteBuf> {
 
     private final ByteBuf buffer;
 
@@ -24,13 +21,6 @@ public class ByteBufDeserializer implements Deserializer<ByteBuf> {
 
     public static ByteBufDeserializer of(ByteBuf buffer) {
         return new ByteBufDeserializer(buffer);
-    }
-
-    // ---
-
-    @Override
-    public Set<SerializationAttribute> attributes() {
-        return Set.of();
     }
 
     // ---

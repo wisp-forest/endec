@@ -3,19 +3,23 @@ package io.wispforest.endec;
 import io.wispforest.endec.format.forwarding.ForwardingDeserializer;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
-public interface Deserializer<T> {
+public interface Deserializer<T> extends ExtraDataContext {
 
-    default Deserializer<T> withAttributes(SerializationAttribute... assumedAttributes) {
-        if (assumedAttributes.length == 0) return this;
-        return ForwardingDeserializer.of(this, assumedAttributes);
+    default Deserializer<T> withTokens(DataToken<Void>... tokens) {
+        if (tokens.length == 0) return this;
+        return ForwardingDeserializer.of(this, Arrays.stream(tokens).map(token -> token.holderFrom(null)));
     }
 
-    Set<SerializationAttribute> attributes();
+    default Deserializer<T> withTokens(DataTokenHolder<?>... holders) {
+        if (holders.length == 0) return this;
+        return ForwardingDeserializer.of(this, Arrays.stream(holders));
+    }
 
     byte readByte();
     short readShort();

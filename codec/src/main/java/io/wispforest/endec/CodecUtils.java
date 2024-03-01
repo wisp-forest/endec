@@ -2,14 +2,15 @@ package io.wispforest.endec;
 
 import com.mojang.datafixers.util.Either;
 import com.mojang.datafixers.util.Pair;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.DataResult;
-import com.mojang.serialization.DynamicOps;
+import com.mojang.serialization.*;
 import io.wispforest.endec.format.edm.*;
 import io.wispforest.endec.impl.EitherEndec;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 public class CodecUtils {
 
@@ -47,12 +48,12 @@ public class CodecUtils {
      * The serialized representation of a codec created through this method is generally
      * identical to that of a codec manually created to describe the same data
      */
-    public static <T> Codec<T> codec(Endec<T> endec, SerializationAttribute... assumedAttributes) {
+    public static <T> Codec<T> codec(Endec<T> endec, DataTokenHolder<?>... assumedTokens) {
         return new Codec<>() {
             @Override
             public <D> DataResult<Pair<T, D>> decode(DynamicOps<D> ops, D input) {
                 try {
-                    return DataResult.success(new Pair<>(endec.decode(LenientEdmDeserializer.of(ops.convertTo(EdmOps.INSTANCE, input)).withAttributes(assumedAttributes)), input));
+                    return DataResult.success(new Pair<>(endec.decode(LenientEdmDeserializer.of(ops.convertTo(EdmOps.INSTANCE, input)).withTokens(assumedTokens)), input));
                 } catch (Exception e) {
                     return DataResult.error(e::getMessage);
                 }
@@ -61,9 +62,54 @@ public class CodecUtils {
             @Override
             public <D> DataResult<D> encode(T input, DynamicOps<D> ops, D prefix) {
                 try {
-                    return DataResult.success(EdmOps.INSTANCE.convertTo(ops, endec.encodeFully(() -> EdmSerializer.of().withAttributes(assumedAttributes), input)));
+                    return DataResult.success(EdmOps.INSTANCE.convertTo(ops, endec.encodeFully(() -> EdmSerializer.of().withTokens(assumedTokens), input)));
                 } catch (Exception e) {
                     return DataResult.error(e::getMessage);
+                }
+            }
+        };
+    }
+
+    public static <T> MapCodec<T> mapCodec(StructEndec<T> structEndec, DataTokenHolder<?>... assumedTokens) {
+        return new MapCodec<>() {
+            @Override
+            public <T1> Stream<T1> keys(DynamicOps<T1> ops) {
+                throw new UnsupportedOperationException("MapCodec generated from StructEndec cannot report keys");
+            }
+
+            @Override
+            public <T1> DataResult<T> decode(DynamicOps<T1> ops, MapLike<T1> input) {
+                try {
+                    var map = new HashMap<String, EdmElement<?>>();
+                    input.entries().forEach(pair -> {
+                        map.put(
+                                getResult(
+                                        ops.getStringValue(pair.getFirst()),
+                                        s -> new IllegalStateException("Unable to parse key: " + s)
+                                ),
+                                ops.convertTo(EdmOps.INSTANCE, pair.getSecond())
+                        );
+                    });
+
+                    return DataResult.success(structEndec.decode(LenientEdmDeserializer.of(EdmElement.wrapMap(map)).withTokens(assumedTokens)));
+                } catch (Exception e) {
+                    return DataResult.error(e::getMessage);
+                }
+            }
+
+            @Override
+            public <T1> RecordBuilder<T1> encode(T input, DynamicOps<T1> ops, RecordBuilder<T1> prefix) {
+                try {
+                    var element = structEndec.encodeFully(() -> EdmSerializer.of().withTokens(assumedTokens), input).<Map<String, EdmElement<?>>>cast();
+
+                    var result = prefix;
+                    for (var entry : element.entrySet()) {
+                        result = result.add(entry.getKey(), EdmOps.INSTANCE.convertTo(ops, entry.getValue()));
+                    }
+
+                    return result;
+                } catch (Exception e) {
+                    return prefix.withErrorsFrom(DataResult.error(e::getMessage, input));
                 }
             }
         };

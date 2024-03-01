@@ -8,21 +8,14 @@ import java.util.*;
 
 public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implements SelfDescribedDeserializer<EdmElement<?>> {
 
-    private static final Set<SerializationAttribute> ATTRIBUTES = EnumSet.of(
-            SerializationAttribute.SELF_DESCRIBING
-    );
-
     protected EdmDeserializer(EdmElement<?> serialized) {
         super(serialized);
+
+        this.set(DataToken.SELF_DESCRIBING, null);
     }
 
     public static EdmDeserializer of(EdmElement<?> serialized) {
         return new EdmDeserializer(serialized);
-    }
-
-    @Override
-    public Set<SerializationAttribute> attributes() {
-        return ATTRIBUTES;
     }
 
     // ---

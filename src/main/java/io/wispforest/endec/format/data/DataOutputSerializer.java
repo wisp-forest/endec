@@ -1,16 +1,15 @@
 package io.wispforest.endec.format.data;
 
 import io.wispforest.endec.Endec;
-import io.wispforest.endec.SerializationAttribute;
+import io.wispforest.endec.ExtraDataSerializer;
 import io.wispforest.endec.Serializer;
 import io.wispforest.endec.util.VarUtils;
 
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Optional;
-import java.util.Set;
 
-public class DataOutputSerializer<D extends DataOutput> implements Serializer<D> {
+public class DataOutputSerializer<D extends DataOutput> extends ExtraDataSerializer<D> {
 
     protected final D output;
 
@@ -28,13 +27,6 @@ public class DataOutputSerializer<D extends DataOutput> implements Serializer<D>
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    // ---
-
-    @Override
-    public Set<SerializationAttribute> attributes() {
-        return null;
     }
 
     // ---

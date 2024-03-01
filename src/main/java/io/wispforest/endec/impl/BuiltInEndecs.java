@@ -1,7 +1,7 @@
 package io.wispforest.endec.impl;
 
+import io.wispforest.endec.DataToken;
 import io.wispforest.endec.Endec;
-import io.wispforest.endec.SerializationAttribute;
 
 import java.time.Instant;
 import java.util.*;
@@ -19,16 +19,16 @@ public final class BuiltInEndecs{
     public static final Endec<BitSet> BITSET = LONG_ARRAY.xmap(BitSet::valueOf, BitSet::toLongArray);
 
     public static final Endec<java.util.UUID> UUID = Endec
-            .ifAttr(
-                    SerializationAttribute.HUMAN_READABLE,
+            .ifToken(
+                    DataToken.HUMAN_READABLE,
                     Endec.STRING.xmap(java.util.UUID::fromString, java.util.UUID::toString)
             ).orElse(
                     INT_ARRAY.xmap(BuiltInEndecs::toUuid, BuiltInEndecs::toIntArray)
             );
 
     public static final Endec<Date> DATE = Endec
-            .ifAttr(
-                    SerializationAttribute.HUMAN_READABLE,
+            .ifToken(
+                    DataToken.HUMAN_READABLE,
                     Endec.STRING.xmap(s -> Date.from(Instant.parse(s)), date -> date.toInstant().toString())
             ).orElse(
                     Endec.LONG.xmap(Date::new, Date::getTime)

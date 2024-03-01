@@ -1,23 +1,15 @@
 package io.wispforest.endec.format.bytebuf;
 
-//import io.netty.buffer.ByteBuf;
-//import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-//import net.minecraft.network.PacketByteBuf;
-//import net.minecraft.network.encoding.StringEncoding;
-//import net.minecraft.network.encoding.VarInts;
-//import net.minecraft.network.encoding.VarLongs;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.wispforest.endec.Endec;
-import io.wispforest.endec.SerializationAttribute;
+import io.wispforest.endec.ExtraDataSerializer;
 import io.wispforest.endec.Serializer;
 import io.wispforest.endec.util.VarUtils;
 
 import java.util.Optional;
-import java.util.Set;
 
-public class ByteBufSerializer<B extends ByteBuf> implements Serializer<B> {
+public class ByteBufSerializer<B extends ByteBuf> extends ExtraDataSerializer<B> {
 
     private final B buffer;
 
@@ -27,13 +19,6 @@ public class ByteBufSerializer<B extends ByteBuf> implements Serializer<B> {
 
     public static <B extends ByteBuf> ByteBufSerializer<B> of(B buffer) {
         return new ByteBufSerializer<>(buffer);
-    }
-
-    // ---
-
-    @Override
-    public Set<SerializationAttribute> attributes() {
-        return Set.of();
     }
 
     // ---

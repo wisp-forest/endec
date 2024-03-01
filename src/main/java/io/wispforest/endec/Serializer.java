@@ -1,20 +1,25 @@
 package io.wispforest.endec;
 
 
+import io.wispforest.endec.format.forwarding.ForwardingDeserializer;
 import io.wispforest.endec.format.forwarding.ForwardingSerializer;
 import io.wispforest.endec.util.Endable;
 
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
 
-public interface Serializer<T> {
+public interface Serializer<T> extends ExtraDataContext {
 
-    default Serializer<T> withAttributes(SerializationAttribute... assumedAttributes) {
-        if (assumedAttributes.length == 0) return this;
-        return ForwardingSerializer.of(this, assumedAttributes);
+    default Serializer<T> withTokens(DataToken<Void>... tokens) {
+        if (tokens.length == 0) return this;
+        return ForwardingSerializer.of(this, Arrays.stream(tokens).map(token -> token.holderFrom(null)));
     }
 
-    Set<SerializationAttribute> attributes();
+    default Serializer<T> withTokens(DataTokenHolder<?>... holders) {
+        if (holders.length == 0) return this;
+        return ForwardingSerializer.of(this, Arrays.stream(holders));
+    }
 
     void writeByte(byte value);
     void writeShort(short value);

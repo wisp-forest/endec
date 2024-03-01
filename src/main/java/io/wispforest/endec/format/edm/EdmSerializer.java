@@ -7,23 +7,14 @@ import java.util.*;
 
 public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> {
 
-    private static final Set<SerializationAttribute> ATTRIBUTES = EnumSet.of(
-            SerializationAttribute.SELF_DESCRIBING
-    );
-
     protected EdmSerializer() {
         super(null);
+
+        this.set(DataToken.SELF_DESCRIBING, null);
     }
 
     public static EdmSerializer of() {
         return new EdmSerializer();
-    }
-
-    // ---
-
-    @Override
-    public Set<SerializationAttribute> attributes() {
-        return ATTRIBUTES;
     }
 
     // ---

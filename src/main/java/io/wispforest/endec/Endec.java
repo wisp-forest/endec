@@ -177,8 +177,8 @@ public interface Endec<T> {
      * and to its {@linkplain Enum#ordinal() ordinal} otherwise
      */
     static <E extends Enum<E>> Endec<E> forEnum(Class<E> enumClass) {
-        return ifAttr(
-                SerializationAttribute.HUMAN_READABLE,
+        return ifToken(
+                DataToken.HUMAN_READABLE,
                 STRING.xmap(name -> Arrays.stream(enumClass.getEnumConstants()).filter(e -> e.name().equals(name)).findFirst().get(), Enum::name)
         ).orElse(
                 VAR_INT.xmap(ordinal -> enumClass.getEnumConstants()[ordinal], Enum::ordinal)
@@ -305,8 +305,8 @@ public interface Endec<T> {
 
     // ---
 
-    static <T> AttributeEndecBuilder<T> ifAttr(SerializationAttribute attribute, Endec<T> endec) {
-        return new AttributeEndecBuilder<>(endec, attribute);
+    static <T> EndecBuilder<T> ifToken(DataToken<?> attribute, Endec<T> endec) {
+        return EndecBuilder.of(attribute, endec);
     }
 
     // --- Endec composition ---

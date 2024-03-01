@@ -1,31 +1,28 @@
 package io.wispforest.endec.format.forwarding;
 
-import com.google.common.collect.ImmutableSet;
 import io.wispforest.endec.*;
 
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
-public class ForwardingDeserializer<T> implements Deserializer<T> {
+public class ForwardingDeserializer<T> extends ExtraDataDeserializer<T> {
 
-    private final Set<SerializationAttribute> attributes;
     private final Deserializer<T> delegate;
 
-    protected ForwardingDeserializer(Deserializer<T> delegate, Set<SerializationAttribute> attributes) {
+    protected ForwardingDeserializer(Deserializer<T> delegate) {
         this.delegate = delegate;
-        this.attributes = attributes;
     }
 
-    public static <T> ForwardingDeserializer<T> of(Deserializer<T> delegate, SerializationAttribute... assumedAttributes) {
-        var attributes = ImmutableSet.<SerializationAttribute>builder()
-                .addAll(delegate.attributes())
-                .add(assumedAttributes)
-                .build();
+    public static <T> ForwardingDeserializer<T> of(Deserializer<T> delegate, Stream<DataTokenHolder<?>> tokens) {
+        var forwardDeserializer = (delegate instanceof SelfDescribedDeserializer<T> selfDescribedDeserializer)
+                ? new ForwardingSelfDescribedDeserializer<>(selfDescribedDeserializer)
+                : new ForwardingDeserializer<>(delegate);
 
-        return (delegate instanceof SelfDescribedDeserializer<T> selfDescribedDeserializer)
-                ? new ForwardingSelfDescribedDeserializer<>(selfDescribedDeserializer, attributes)
-                : new ForwardingDeserializer<>(delegate, attributes);
+        tokens.forEach(holder -> holder.consume(forwardDeserializer::set));
+
+        return forwardDeserializer;
     }
 
     public Deserializer<T> delegate() {
@@ -33,11 +30,6 @@ public class ForwardingDeserializer<T> implements Deserializer<T> {
     }
 
     //--
-
-    @Override
-    public Set<SerializationAttribute> attributes() {
-        return attributes;
-    }
 
     @Override
     public byte readByte() {
@@ -120,8 +112,8 @@ public class ForwardingDeserializer<T> implements Deserializer<T> {
     }
 
     private static class ForwardingSelfDescribedDeserializer<T> extends ForwardingDeserializer<T> implements SelfDescribedDeserializer<T> {
-        private ForwardingSelfDescribedDeserializer(Deserializer<T> delegate, Set<SerializationAttribute> attributes) {
-            super(delegate, attributes);
+        private ForwardingSelfDescribedDeserializer(Deserializer<T> delegate) {
+            super(delegate);
         }
 
         @Override

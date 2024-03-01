@@ -1,5 +1,6 @@
 package io.wispforest.endec.util;
 
+import io.wispforest.endec.ExtraDataDeserializer;
 import io.wispforest.endec.Deserializer;
 
 import java.util.ArrayDeque;
@@ -19,7 +20,7 @@ import java.util.function.Supplier;
  * {@link io.wispforest.owo.serialization.format.json.JsonDeserializer} for some reference
  * implementations
  */
-public abstract class RecursiveDeserializer<T> implements Deserializer<T> {
+public abstract class RecursiveDeserializer<T> extends ExtraDataDeserializer<T> {
 
     protected final Deque<Frame<T>> frames = new ArrayDeque<>();
     protected final T serialized;

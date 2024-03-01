@@ -2,17 +2,16 @@ package io.wispforest.endec.format.data;
 
 import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
-import io.wispforest.endec.SerializationAttribute;
+import io.wispforest.endec.ExtraDataDeserializer;
 import io.wispforest.endec.util.VarUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.DataInput;
 import java.io.IOException;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
 
-public class DataInputDeserializer implements Deserializer<DataInput> {
+public class DataInputDeserializer extends ExtraDataDeserializer<DataInput> {
 
     protected final DataInput input;
 
@@ -22,13 +21,6 @@ public class DataInputDeserializer implements Deserializer<DataInput> {
 
     public static DataInputDeserializer of(DataInput input) {
         return new DataInputDeserializer(input);
-    }
-
-    // ---
-
-    @Override
-    public Set<SerializationAttribute> attributes() {
-        return Set.of();
     }
 
     // ---
