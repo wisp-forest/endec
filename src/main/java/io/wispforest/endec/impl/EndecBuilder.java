@@ -5,7 +5,6 @@ import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.Serializer;
 import io.wispforest.endec.util.TriConsumer;
-import org.checkerframework.checker.units.qual.C;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.LinkedHashMap;

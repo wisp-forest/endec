@@ -3,7 +3,6 @@ package io.wispforest.endec.format.forwarding;
 import io.wispforest.endec.*;
 
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -20,7 +19,7 @@ public class ForwardingDeserializer<T> extends ExtraDataDeserializer<T> {
                 ? new ForwardingSelfDescribedDeserializer<>(selfDescribedDeserializer)
                 : new ForwardingDeserializer<>(delegate);
 
-        tokens.forEach(holder -> holder.consume(forwardDeserializer::set));
+        tokens.forEach(holder -> holder.consume((token, o) -> forwardDeserializer.set((DataToken) token, o)));
 
         return forwardDeserializer;
     }

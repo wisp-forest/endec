@@ -1,9 +1,12 @@
 package io.wispforest.endec.format.edm;
 
 import io.wispforest.endec.*;
+import io.wispforest.endec.util.MutableHolder;
 import io.wispforest.endec.util.RecursiveSerializer;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> {
 
@@ -82,10 +85,15 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> {
 
     @Override
     public <V> void writeOptional(Endec<V> endec, Optional<V> optional) {
+        var holder = new MutableHolder<@Nullable EdmElement<?>>();
+
         this.frame(encoded -> {
             optional.ifPresent(v -> endec.encode(this, v));
-            this.consume(EdmElement.wrapOptional(Optional.ofNullable(encoded.get())));
+
+            holder.setValue(encoded.get());
         }, false);
+
+        this.consume(EdmElement.wrapOptional(Optional.ofNullable(holder.getValue())));
     }
 
     // ---

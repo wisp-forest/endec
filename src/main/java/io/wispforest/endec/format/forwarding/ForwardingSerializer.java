@@ -1,9 +1,6 @@
 package io.wispforest.endec.format.forwarding;
 
-import io.wispforest.endec.DataTokenHolder;
-import io.wispforest.endec.Endec;
-import io.wispforest.endec.ExtraDataSerializer;
-import io.wispforest.endec.Serializer;
+import io.wispforest.endec.*;
 
 import java.util.Optional;
 import java.util.Set;
@@ -24,7 +21,7 @@ public class ForwardingSerializer<T> extends ExtraDataSerializer<T> {
     public static <T> ForwardingSerializer<T> of(Serializer<T> delegate, Stream<DataTokenHolder<?>> tokens) {
         var forwardingSerializer = new ForwardingSerializer<>(delegate);
 
-        tokens.forEach(holder -> holder.consume(forwardingSerializer::set));
+        tokens.forEach(holder -> holder.consume((token, o) -> forwardingSerializer.set((DataToken) token, o)));
 
         return forwardingSerializer;
     }
