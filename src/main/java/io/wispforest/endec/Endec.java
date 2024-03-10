@@ -1,6 +1,7 @@
 package io.wispforest.endec;
 
 import io.wispforest.endec.impl.*;
+import io.wispforest.endec.util.TriConsumer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -307,6 +308,20 @@ public interface Endec<T> {
 
     static <T> EndecBuilder<T> ifToken(DataToken<?> attribute, Endec<T> endec) {
         return EndecBuilder.of(attribute, endec);
+    }
+
+    static <VALUE_TYPE, TOKEN_TYPE> Endec<VALUE_TYPE> ofToken(DataToken<TOKEN_TYPE> token, TriConsumer<Serializer<?>, VALUE_TYPE, TOKEN_TYPE> encode, BiFunction<Deserializer<?>, TOKEN_TYPE, VALUE_TYPE> decode){
+        return new Endec<>() {
+            @Override
+            public void encode(Serializer<?> serializer, VALUE_TYPE value) {
+                encode.accept(serializer, value, serializer.getOrThrow(token));
+            }
+
+            @Override
+            public VALUE_TYPE decode(Deserializer<?> deserializer) {
+                return decode.apply(deserializer, deserializer.getOrThrow(token));
+            }
+        };
     }
 
     // --- Endec composition ---
