@@ -1,5 +1,9 @@
 package io.wispforest.endec.format.edm;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -45,7 +49,7 @@ public sealed class EdmElement<T> permits EdmMap {
             throw new IllegalStateException("Cannot cast EDM element of type " + this.type + " to MAP");
         }
 
-        return new EdmMap(this.cast());
+        return new EdmMap(new HashMap<>(this.<Map<String, EdmElement<?>>>cast()));
     }
 
     @Override
@@ -109,11 +113,11 @@ public sealed class EdmElement<T> permits EdmMap {
     }
 
     public static EdmElement<List<EdmElement<?>>> wrapSequence(List<EdmElement<?>> value) {
-        return new EdmElement<>(value, Type.SEQUENCE);
+        return new EdmElement<>(ImmutableList.copyOf(value), Type.SEQUENCE);
     }
 
     public static EdmElement<Map<String, EdmElement<?>>> wrapMap(Map<String, EdmElement<?>> value) {
-        return new EdmElement<>(value, Type.MAP);
+        return new EdmElement<>(ImmutableMap.copyOf(value), Type.MAP);
     }
 
     public enum Type {
