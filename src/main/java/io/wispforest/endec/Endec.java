@@ -262,18 +262,18 @@ public interface Endec<T> {
     static <T, K> Endec<T> dispatchedStruct(Function<K, StructEndec<? extends T>> variantToEndec, Function<T, K> instanceToVariant, Endec<K> variantEndec, String variantKey) {
         return new StructEndec<>() {
             @Override
-            public void encodeStruct(Serializer.Struct struct, T value) {
+            public void encodeStruct(Serializer<?> serializer, Serializer.Struct struct, T value) {
                 var variant = instanceToVariant.apply(value);
                 struct.field(variantKey, variantEndec, variant);
 
                 //noinspection unchecked
-                ((StructEndec<T>) variantToEndec.apply(variant)).encodeStruct(struct, value);
+                ((StructEndec<T>) variantToEndec.apply(variant)).encodeStruct(serializer, struct, value);
             }
 
             @Override
-            public T decodeStruct(Deserializer.Struct struct) {
+            public T decodeStruct(Deserializer<?> deserializer, Deserializer.Struct struct) {
                 var variant = struct.field(variantKey, variantEndec);
-                return variantToEndec.apply(variant).decodeStruct(struct);
+                return variantToEndec.apply(variant).decodeStruct(deserializer, struct);
             }
         };
     }
@@ -288,7 +288,7 @@ public interface Endec<T> {
     static <T, K> Endec<T> dispatched(Function<K, Endec<? extends T>> variantToEndec, Function<T, K> instanceToVariant, Endec<K> variantEndec) {
         return new StructEndec<>() {
             @Override
-            public void encodeStruct(Serializer.Struct struct, T value) {
+            public void encodeStruct(Serializer<?> serializer, Serializer.Struct struct, T value) {
                 var variant = instanceToVariant.apply(value);
                 struct.field("variant", variantEndec, variant);
 
@@ -297,7 +297,7 @@ public interface Endec<T> {
             }
 
             @Override
-            public T decodeStruct(Deserializer.Struct struct) {
+            public T decodeStruct(Deserializer<?> deserializer, Deserializer.Struct struct) {
                 var variant = struct.field("variant", variantEndec);
                 return struct.field("instance", variantToEndec.apply(variant));
             }

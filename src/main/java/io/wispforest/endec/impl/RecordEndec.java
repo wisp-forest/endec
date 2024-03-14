@@ -77,7 +77,7 @@ public final class RecordEndec<R extends Record> implements StructEndec<R> {
     }
 
     @Override
-    public R decodeStruct(Deserializer.Struct struct) {
+    public R decodeStruct(Deserializer<?> deserializer, Deserializer.Struct struct) {
         Object[] fieldValues = new Object[this.fields.size()];
 
         int index = 0;
@@ -97,7 +97,7 @@ public final class RecordEndec<R extends Record> implements StructEndec<R> {
     }
 
     @Override
-    public void encodeStruct(Serializer.Struct struct, R instance) {
+    public void encodeStruct(Serializer<?> serializer, Serializer.Struct struct, R instance) {
         this.fields.forEach(field -> field.encodeField(struct, instance));
     }
 }

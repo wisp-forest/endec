@@ -4,6 +4,7 @@ package io.wispforest.endec;
 import io.wispforest.endec.format.forwarding.ForwardingDeserializer;
 import io.wispforest.endec.format.forwarding.ForwardingSerializer;
 import io.wispforest.endec.util.Endable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.Optional;
