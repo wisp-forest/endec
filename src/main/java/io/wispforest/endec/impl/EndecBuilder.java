@@ -21,6 +21,10 @@ public class EndecBuilder<T> {
         return new EndecBuilder<T>().orElseIf(token, encode, decode);
     }
 
+    public static <T, I, D> EndecBuilder<T> of(DataToken<D> attribute, Endec<I> endec, BiFunction<D, T, I> to, BiFunction<D, I, T> from) {
+        return EndecBuilder.of(attribute, (serializer, d, t) -> endec.encode(serializer, to.apply(d, t)), (deserializer, d) -> from.apply(d, endec.decode(deserializer)));
+    }
+
     public static <T> EndecBuilder<T> of(DataToken<?> token, Endec<T> endec){
         return new EndecBuilder<T>().orElseIf(token, endec);
     }

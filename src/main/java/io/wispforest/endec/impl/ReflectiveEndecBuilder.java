@@ -27,20 +27,24 @@ public class ReflectiveEndecBuilder {
     /**
      * Register {@code endec} to be used for (de)serializing instances of {@code clazz}
      */
-    public <T> void register(Endec<T> endec, Class<T> clazz) {
+    public <T> ReflectiveEndecBuilder register(Endec<T> endec, Class<T> clazz) {
         if (CLASS_TO_ENDEC.containsKey(clazz)) {
             throw new IllegalStateException("Class '" + clazz.getName() + "' already has an associated endec");
         }
 
         CLASS_TO_ENDEC.put(clazz, endec);
+
+        return this;
     }
 
     /**
      * Invoke {@link #register(Endec, Class)} once for each class of {@code classes}
      */
     @SafeVarargs
-    private <T> void register(Endec<T> endec, Class<T>... classes) {
+    public final <T> ReflectiveEndecBuilder register(Endec<T> endec, Class<T>... classes) {
         for (var clazz : classes) register(endec, clazz);
+
+        return this;
     }
 
     /**
@@ -197,15 +201,15 @@ public class ReflectiveEndecBuilder {
         // Primitives
         // ----------
 
-        builder.register(Endec.BOOLEAN, Boolean.class, boolean.class);
-        builder.register(Endec.INT, Integer.class, int.class);
-        builder.register(Endec.LONG, Long.class, long.class);
-        builder.register(Endec.FLOAT, Float.class, float.class);
-        builder.register(Endec.DOUBLE, Double.class, double.class);
+        builder.register(Endec.BOOLEAN, Boolean.class, boolean.class)
+                .register(Endec.INT, Integer.class, int.class)
+                .register(Endec.LONG, Long.class, long.class)
+                .register(Endec.FLOAT, Float.class, float.class)
+                .register(Endec.DOUBLE, Double.class, double.class);
 
-        builder.register(Endec.BYTE, Byte.class, byte.class);
-        builder.register(Endec.SHORT, Short.class, short.class);
-        builder.register(Endec.SHORT.xmap(aShort -> (char) aShort.shortValue(), character -> (short) character.charValue()), Character.class, char.class);
+        builder.register(Endec.BYTE, Byte.class, byte.class)
+                .register(Endec.SHORT, Short.class, short.class)
+                .register(Endec.SHORT.xmap(aShort -> (char) aShort.shortValue(), character -> (short) character.charValue()), Character.class, char.class);
 
         builder.register(Endec.VOID, Void.class);
 
@@ -213,76 +217,9 @@ public class ReflectiveEndecBuilder {
         // Misc
         // ----
 
-        builder.register(Endec.STRING, String.class);
-        builder.register(BuiltInEndecs.UUID, UUID.class);
-        builder.register(BuiltInEndecs.DATE, Date.class);
-        builder.register(BuiltInEndecs.BITSET, BitSet.class);
-        //register(BuiltInEndecs.PACKET_BYTE_BUF, PacketByteBuf.class);
-
-        // --------
-        // MC Types
-        // --------
-
-//        register(BuiltInEndecs.BLOCK_POS, BlockPos.class);
-//        register(BuiltInEndecs.CHUNK_POS, ChunkPos.class);
-//        register(BuiltInEndecs.ITEM_STACK, ItemStack.class);
-//        register(BuiltInEndecs.IDENTIFIER, Identifier.class);
-//        register(NbtEndec.COMPOUND, NbtCompound.class);
-//        register(
-//                new StructEndec<>() {
-//                    final Endec<Direction> DIRECTION = Endec.forEnum(Direction.class);
-//
-//                    @Override
-//                    public void encodeStruct(Serializer.Struct struct, BlockHitResult hitResult) {
-//                        BlockPos blockPos = hitResult.getBlockPos();
-//                        struct.field("blockPos", BuiltInEndecs.BLOCK_POS, blockPos)
-//                                .field("side", DIRECTION, hitResult.getSide());
-//
-//                        Vec3d vec3d = hitResult.getPos();
-//                        struct.field("x", Endec.FLOAT, (float) (vec3d.x - (double) blockPos.getX()))
-//                                .field("y", Endec.FLOAT, (float) (vec3d.x - (double) blockPos.getX()))
-//                                .field("z", Endec.FLOAT, (float) (vec3d.x - (double) blockPos.getX()))
-//                                .field("inside", Endec.BOOLEAN, hitResult.isInsideBlock());
-//                    }
-//
-//                    @Override
-//                    public BlockHitResult decodeStruct(Deserializer.Struct struct) {
-//                        BlockPos blockPos = struct.field("blockPos", BuiltInEndecs.BLOCK_POS);
-//                        Direction direction = struct.field("side", DIRECTION);
-//
-//                        float f = struct.field("x", Endec.FLOAT);
-//                        float g = struct.field("y", Endec.FLOAT);
-//                        float h = struct.field("z", Endec.FLOAT);
-//
-//                        boolean bl = struct.field("inside", Endec.BOOLEAN);
-//                        return new BlockHitResult(
-//                                new Vec3d((double) blockPos.getX() + (double) f, (double) blockPos.getY() + (double) g, (double) blockPos.getZ() + (double) h), direction, blockPos, bl
-//                        );
-//                    }
-//                },
-//                BlockHitResult.class
-//        );
-//
-//        register(BuiltInEndecs.TEXT, Text.class);
-//        register(BuiltInEndecs.PACKET_BYTE_BUF.xmap(
-//                byteBuf -> {
-//                    //noinspection rawtypes
-//                    final ParticleType particleType = Registries.PARTICLE_TYPE.get(byteBuf.readInt());
-//                    //noinspection unchecked, ConstantConditions
-//
-//                    return particleType.getParametersFactory().read(particleType, byteBuf);
-//                },
-//                particleEffect -> {
-//                    PacketByteBuf buf = PacketByteBufs.create();
-//                    buf.writeInt(Registries.PARTICLE_TYPE.getRawId(particleEffect.getType()));
-//                    particleEffect.write(buf);
-//
-//                    return buf;
-//                }
-//        ), ParticleEffect.class);
-//
-//        register(BuiltInEndecs.VEC3D, Vec3d.class);
-//        register(BuiltInEndecs.VECTOR3F, Vector3f.class);
-//        register(BuiltInEndecs.VEC3I, Vec3i.class);
+        builder.register(Endec.STRING, String.class)
+                .register(BuiltInEndecs.UUID, UUID.class)
+                .register(BuiltInEndecs.DATE, Date.class)
+                .register(BuiltInEndecs.BITSET, BitSet.class);
     }
 }

@@ -310,15 +310,23 @@ public interface Endec<T> {
         return EndecBuilder.of(attribute, endec);
     }
 
-    static <VALUE_TYPE, TOKEN_TYPE> Endec<VALUE_TYPE> ofToken(DataToken<TOKEN_TYPE> token, TriConsumer<Serializer<?>, VALUE_TYPE, TOKEN_TYPE> encode, BiFunction<Deserializer<?>, TOKEN_TYPE, VALUE_TYPE> decode){
+    static <D, T, I> EndecBuilder<T> ifToken(DataToken<D> attribute, Endec<I> endec, BiFunction<D, T, I> to, BiFunction<D, I, T> from) {
+        return EndecBuilder.of(attribute, endec, to, from);
+    }
+
+    default <D, R> Endec<R> ofToken(DataToken<D> attribute, BiFunction<D, T, R> to, BiFunction<D, R, T> from) {
+        return Endec.ofToken(attribute, (serializer, d, t) -> this.encode(serializer, from.apply(d, t)), (deserializer, d) -> to.apply(d, this.decode(deserializer)));
+    }
+
+    static <V, D> Endec<V> ofToken(DataToken<D> token, TriConsumer<Serializer<?>, D, V> encode, BiFunction<Deserializer<?>, D, V> decode){
         return new Endec<>() {
             @Override
-            public void encode(Serializer<?> serializer, VALUE_TYPE value) {
-                encode.accept(serializer, value, serializer.getOrThrow(token));
+            public void encode(Serializer<?> serializer, V value) {
+                encode.accept(serializer, serializer.getOrThrow(token), value);
             }
 
             @Override
-            public VALUE_TYPE decode(Deserializer<?> deserializer) {
+            public V decode(Deserializer<?> deserializer) {
                 return decode.apply(deserializer, deserializer.getOrThrow(token));
             }
         };
