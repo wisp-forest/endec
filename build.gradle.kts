@@ -1,3 +1,5 @@
+import java.net.URI
+
 plugins {
     id("java")
     id("maven-publish")
@@ -13,7 +15,7 @@ allprojects {
     base {
         var baseName = project.property("archives_base_name") as String
 
-        this.archivesName.set(if(baseName.equals("endec")) baseName else "endec.${baseName}")
+        this.archivesName.set(if (baseName.equals("endec")) baseName else "endec.${baseName}")
     }
 
     repositories {
@@ -34,14 +36,20 @@ allprojects {
     publishing {
         publications {
             create<MavenPublication>("mavenCommon") {
-                artifactId = project.base.archivesName.get()
-                from(components.getByName("java"))
+                groupId = project.property("maven_group") as String;
+                from(components["java"])
             }
         }
 
-        // See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
         repositories {
-            // Add repositories to publish to here.
+            val env = System.getenv()
+            maven {
+                url = URI.create(env["MAVEN_URL"])
+                credentials {
+                    username = env["MAVEN_USER"]
+                    password = env["MAVEN_PASSWORD"]
+                }
+            }
         }
     }
 }

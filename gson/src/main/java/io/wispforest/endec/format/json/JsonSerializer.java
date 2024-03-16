@@ -4,6 +4,7 @@ import com.google.gson.*;
 import io.wispforest.endec.DataToken;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.Serializer;
+import io.wispforest.endec.impl.StructEndecBuilder;
 import io.wispforest.endec.util.RecursiveSerializer;
 
 import java.util.Optional;
@@ -157,7 +158,7 @@ public class JsonSerializer extends RecursiveSerializer<JsonElement> {
         public <F> Struct field(String name, Endec<F> endec, F value) {
             JsonSerializer.this.frame(encoded -> {
                 endec.encode(JsonSerializer.this, value);
-                this.result.add(name, encoded.require("struct field"));
+                if (encoded.wasEncoded()) this.result.add(name, encoded.get());
             }, true);
 
             return this;
@@ -202,4 +203,15 @@ public class JsonSerializer extends RecursiveSerializer<JsonElement> {
             JsonSerializer.this.consume(result);
         }
     }
+
+    public static void main(String[] args) {
+        var endec = StructEndecBuilder.of(
+                Endec.STRING.optionalFieldOf("a_field", Bruh::aField, "a value"),
+                Bruh::new
+        );
+
+        System.out.println(endec.encodeFully(JsonSerializer::of, new Bruh(null)).toString());
+    }
+
+    record Bruh(String aField) {}
 }
