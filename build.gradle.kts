@@ -44,7 +44,7 @@ allprojects {
         repositories {
             val env = System.getenv()
             maven {
-                url = URI.create(env["MAVEN_URL"])
+                url = URI.create(env["MAVEN_URL"] ?: "")
                 credentials {
                     username = env["MAVEN_USER"]
                     password = env["MAVEN_PASSWORD"]
