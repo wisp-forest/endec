@@ -19,6 +19,8 @@ public class ForwardingDeserializer<T> extends ExtraDataDeserializer<T> {
                 ? new ForwardingSelfDescribedDeserializer<>(selfDescribedDeserializer)
                 : new ForwardingDeserializer<>(delegate);
 
+        forwardDeserializer.gatherFrom(delegate);
+
         tokens.forEach(holder -> holder.consume((token, o) -> forwardDeserializer.set((DataToken) token, o)));
 
         return forwardDeserializer;

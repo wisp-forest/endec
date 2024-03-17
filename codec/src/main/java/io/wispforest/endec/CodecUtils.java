@@ -32,8 +32,12 @@ public class CodecUtils {
      */
     public static <T> Endec<T> ofCodec(Codec<T> codec) {
         return Endec.of(
-                (serializer, value) -> EdmEndec.INSTANCE.encode(serializer, getResult(codec.encodeStart(EdmOps.INSTANCE, value), IllegalStateException::new)),
-                deserializer -> getResult(codec.parse(EdmOps.INSTANCE, EdmEndec.INSTANCE.decode(deserializer)), IllegalStateException::new)
+                (serializer, value) -> {
+                    EdmEndec.INSTANCE.encode(serializer, getResult(codec.encodeStart(EdmOps.create(serializer), value), IllegalStateException::new));
+                },
+                deserializer -> {
+                    return getResult(codec.parse(EdmOps.create(deserializer), EdmEndec.INSTANCE.decode(deserializer)), IllegalStateException::new);
+                }
         );
     }
 
@@ -53,7 +57,13 @@ public class CodecUtils {
             @Override
             public <D> DataResult<Pair<T, D>> decode(DynamicOps<D> ops, D input) {
                 try {
-                    return DataResult.success(new Pair<>(endec.decode(LenientEdmDeserializer.of(ops.convertTo(EdmOps.INSTANCE, input)).withTokens(assumedTokens)), input));
+                    var edmElement = ops.convertTo(EdmOps.INSTANCE, input);
+
+                    var deserializer = LenientEdmDeserializer.of(edmElement);
+
+                    if(ops instanceof ExtraDataContext context) deserializer.gatherFrom(context);
+
+                    return DataResult.success(new Pair<>(endec.decode(deserializer.withTokens(assumedTokens)), input));
                 } catch (Exception e) {
                     return DataResult.error(e::getMessage);
                 }
@@ -62,7 +72,11 @@ public class CodecUtils {
             @Override
             public <D> DataResult<D> encode(T input, DynamicOps<D> ops, D prefix) {
                 try {
-                    return DataResult.success(EdmOps.INSTANCE.convertTo(ops, endec.encodeFully(() -> EdmSerializer.of().withTokens(assumedTokens), input)));
+                    var serializer = EdmSerializer.of();
+
+                    if(ops instanceof ExtraDataContext context) serializer.gatherFrom(context);
+
+                    return DataResult.success(EdmOps.INSTANCE.convertTo(ops, endec.encodeFully(() -> serializer.withTokens(assumedTokens), input)));
                 } catch (Exception e) {
                     return DataResult.error(e::getMessage);
                 }
@@ -91,7 +105,13 @@ public class CodecUtils {
                         );
                     });
 
-                    return DataResult.success(structEndec.decode(LenientEdmDeserializer.of(EdmElement.wrapMap(map)).withTokens(assumedTokens)));
+                    var edmElement = EdmElement.wrapMap(map);
+
+                    var deserializer = LenientEdmDeserializer.of(edmElement);
+
+                    if(ops instanceof ExtraDataContext context) deserializer.gatherFrom(context);
+
+                    return DataResult.success(structEndec.decode(deserializer.withTokens(assumedTokens)));
                 } catch (Exception e) {
                     return DataResult.error(e::getMessage);
                 }
@@ -100,7 +120,11 @@ public class CodecUtils {
             @Override
             public <T1> RecordBuilder<T1> encode(T input, DynamicOps<T1> ops, RecordBuilder<T1> prefix) {
                 try {
-                    var element = structEndec.encodeFully(() -> EdmSerializer.of().withTokens(assumedTokens), input).<Map<String, EdmElement<?>>>cast();
+                    var serializer = EdmSerializer.of();
+
+                    if(ops instanceof ExtraDataContext context) serializer.gatherFrom(context);
+
+                    var element = structEndec.encodeFully(() -> serializer.withTokens(assumedTokens), input).<Map<String, EdmElement<?>>>cast();
 
                     var result = prefix;
                     for (var entry : element.entrySet()) {

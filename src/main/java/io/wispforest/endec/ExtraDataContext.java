@@ -3,6 +3,8 @@ package io.wispforest.endec;
 import io.wispforest.endec.impl.MissingTokenDataException;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Set;
+
 public interface ExtraDataContext {
 
     <DATA_TYPE> @Nullable DATA_TYPE get(DataToken<DATA_TYPE> token);
@@ -20,4 +22,14 @@ public interface ExtraDataContext {
     <DATA_TYPE> void set(DataToken<DATA_TYPE> token, DATA_TYPE data);
 
     <DATA_TYPE> void remove(DataToken<DATA_TYPE> token);
+
+    Set<DataTokenHolder<?>> allTokens();
+
+    default <C extends ExtraDataContext> C gatherFrom(ExtraDataContext from){
+        for (DataTokenHolder<?> holder : allTokens()) {
+            holder.consume((token, o) -> from.set((DataToken) token, o));
+        }
+
+        return (C) this;
+    }
 }

@@ -3,10 +3,19 @@ package io.wispforest.endec;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public abstract class ExtraDataDeserializer<T> implements Deserializer<T> {
 
     private final java.util.Map<DataToken<?>, Object> contextData = new HashMap<>();
+
+    @Override
+    public Set<DataTokenHolder<?>> allTokens() {
+        return this.contextData.entrySet().stream()
+                .map(entry -> entry.getKey().holderFromUnsafe(entry.getValue()))
+                .collect(Collectors.toSet());
+    }
 
     @Override
     @Nullable

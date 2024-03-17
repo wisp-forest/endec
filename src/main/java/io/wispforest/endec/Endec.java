@@ -306,12 +306,12 @@ public interface Endec<T> {
 
     // ---
 
-    static <T> EndecBuilder<T> ifToken(DataToken<?> attribute, Endec<T> endec) {
-        return EndecBuilder.of(attribute, endec);
+    static <T> EndecBranchedBuilder<T> ifToken(DataToken<?> attribute, Endec<T> endec) {
+        return EndecBranchedBuilder.of(attribute, endec);
     }
 
-    static <D, T, I> EndecBuilder<T> ifToken(DataToken<D> attribute, Endec<I> endec, BiFunction<D, T, I> to, BiFunction<D, I, T> from) {
-        return EndecBuilder.of(attribute, endec, to, from);
+    static <D, T, I> EndecBranchedBuilder<T> ifToken(DataToken<D> attribute, Endec<I> endec, BiFunction<D, T, I> to, BiFunction<D, I, T> from) {
+        return EndecBranchedBuilder.of(attribute, endec, to, from);
     }
 
     default <D, R> Endec<R> ofToken(DataToken<D> attribute, BiFunction<D, T, R> to, BiFunction<D, R, T> from) {

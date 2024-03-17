@@ -27,6 +27,7 @@ public interface StructEndec<T> extends Endec<T> {
         return this.decodeStruct(deserializer, deserializer.struct());
     }
 
+
     @Override
     default <D, R> StructEndec<R> ofToken(DataToken<D> attribute, BiFunction<D, T, R> to, BiFunction<D, R, T> from) {
         return new StructEndec<R>() {

@@ -11,25 +11,25 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
 
-public class EndecBuilder<T> {
+public class EndecBranchedBuilder<T> {
 
     private final Map<DataToken<?>, OptionalEndec<T>> branches = new LinkedHashMap<>();
 
-    private EndecBuilder(){}
+    private EndecBranchedBuilder(){}
 
-    public static <T, C> EndecBuilder<T> of(DataToken<C> token, TriConsumer<Serializer<?>, C, T> encode, BiFunction<Deserializer<?>, C, T> decode){
-        return new EndecBuilder<T>().orElseIf(token, encode, decode);
+    public static <T, C> EndecBranchedBuilder<T> of(DataToken<C> token, TriConsumer<Serializer<?>, C, T> encode, BiFunction<Deserializer<?>, C, T> decode){
+        return new EndecBranchedBuilder<T>().orElseIf(token, encode, decode);
     }
 
-    public static <T, I, D> EndecBuilder<T> of(DataToken<D> attribute, Endec<I> endec, BiFunction<D, T, I> to, BiFunction<D, I, T> from) {
-        return EndecBuilder.of(attribute, (serializer, d, t) -> endec.encode(serializer, to.apply(d, t)), (deserializer, d) -> from.apply(d, endec.decode(deserializer)));
+    public static <T, I, D> EndecBranchedBuilder<T> of(DataToken<D> attribute, Endec<I> endec, BiFunction<D, T, I> to, BiFunction<D, I, T> from) {
+        return EndecBranchedBuilder.of(attribute, (serializer, d, t) -> endec.encode(serializer, to.apply(d, t)), (deserializer, d) -> from.apply(d, endec.decode(deserializer)));
     }
 
-    public static <T> EndecBuilder<T> of(DataToken<?> token, Endec<T> endec){
-        return new EndecBuilder<T>().orElseIf(token, endec);
+    public static <T> EndecBranchedBuilder<T> of(DataToken<?> token, Endec<T> endec){
+        return new EndecBranchedBuilder<T>().orElseIf(token, endec);
     }
 
-    public <C> EndecBuilder<T> orElseIf(DataToken<C> token, TriConsumer<Serializer<?>, C, T> encode, BiFunction<Deserializer<?>, C, T> decode) {
+    public <C> EndecBranchedBuilder<T> orElseIf(DataToken<C> token, TriConsumer<Serializer<?>, C, T> encode, BiFunction<Deserializer<?>, C, T> decode) {
         if(this.branches.containsKey(token)) {
             throw new IllegalStateException("Unable to add a branch for the given Endec due to already containing such in the map! [Name: " + token.name() + "]");
         }
@@ -56,7 +56,7 @@ public class EndecBuilder<T> {
         return this;
     }
 
-    public EndecBuilder<T> orElseIf(DataToken<?> token, Endec<T> endec) {
+    public EndecBranchedBuilder<T> orElseIf(DataToken<?> token, Endec<T> endec) {
         if(this.branches.containsKey(token)) {
             throw new IllegalStateException("Unable to add a branch for the given Endec due to already containing such in the map! [Name: " + token.name() + "]");
         }

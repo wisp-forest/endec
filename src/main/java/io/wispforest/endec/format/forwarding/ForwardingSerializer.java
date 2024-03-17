@@ -21,6 +21,8 @@ public class ForwardingSerializer<T> extends ExtraDataSerializer<T> {
     public static <T> ForwardingSerializer<T> of(Serializer<T> delegate, Stream<DataTokenHolder<?>> tokens) {
         var forwardingSerializer = new ForwardingSerializer<>(delegate);
 
+        forwardingSerializer.gatherFrom(delegate);
+
         tokens.forEach(holder -> holder.consume((token, o) -> forwardingSerializer.set((DataToken) token, o)));
 
         return forwardingSerializer;
