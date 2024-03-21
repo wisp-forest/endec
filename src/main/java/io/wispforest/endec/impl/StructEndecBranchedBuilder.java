@@ -1,8 +1,7 @@
 package io.wispforest.endec.impl;
 
 import io.wispforest.endec.*;
-import io.wispforest.endec.functions.QuadConsumer;
-import io.wispforest.endec.util.TriConsumer;
+import io.wispforest.endec.util.QuadConsumer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.LinkedHashMap;
