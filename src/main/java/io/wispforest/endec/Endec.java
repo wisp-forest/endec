@@ -1,9 +1,15 @@
 package io.wispforest.endec;
 
 import io.wispforest.endec.impl.*;
+import io.wispforest.endec.util.io.FileDeserializerConstructor;
+import io.wispforest.endec.util.io.FileSerializerConstructor;
+import io.wispforest.endec.util.io.FileUtils;
 import io.wispforest.endec.util.TriConsumer;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.function.*;
 
@@ -49,6 +55,14 @@ public interface Endec<T> {
      */
     default <E> T decodeFully(Function<E, Deserializer<E>> deserializerConstructor, E value) {
         return this.decode(deserializerConstructor.apply(value));
+    }
+
+    default <E> T decodeFile(Path path, FileDeserializerConstructor<E> deserializerConstructor) throws IOException {
+        return FileUtils.decode(path, deserializerConstructor, this);
+    }
+
+    default <E> void encodeFile(Path path, FileSerializerConstructor<E> serializerConstructor, T t) throws IOException {
+        FileUtils.encode(path, serializerConstructor, this, t);
     }
 
     // --- Serializer Primitives ---
@@ -385,7 +399,7 @@ public interface Endec<T> {
 
     /**
      * Create a new keyed endec which (de)serializes the entry
-     * with key {@code key} into/from a {@link io.wispforest.owo.serialization.util.MapCarrier},
+     * with key {@code key} into/from a {@link io.wispforest.endec.util.MapCarrier},
      * decoding to {@code defaultValue} if the map does not contain such an entry
      * <p>
      * If {@code T} is of a mutable type, you almost always want to use {@link #keyed(String, Supplier)} instead
@@ -396,7 +410,7 @@ public interface Endec<T> {
 
     /**
      * Create a new keyed endec which (de)serializes the entry
-     * with key {@code key} into/from a {@link io.wispforest.owo.serialization.util.MapCarrier},
+     * with key {@code key} into/from a {@link io.wispforest.endec.util.MapCarrier},
      * decoding to the result of invoking {@code defaultValueFactory} if the map does not contain such an entry
      * <p>
      * If {@code T} is of an immutable type, you almost always want to use {@link #keyed(String, Object)} instead

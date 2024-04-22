@@ -1,11 +1,35 @@
 package io.wispforest.endec.format.edm;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
+import io.wispforest.endec.format.file.FileWriter;
+import io.wispforest.endec.util.io.FileUtils;
+
+import java.io.*;
+import java.nio.file.Path;
 import java.util.*;
 
 public class EdmIo {
+
+    public static EdmDeserializer fileReader(Path path) throws IOException {
+        return FileUtils.fileReader(path, EdmDeserializer::of, EdmIo::fromByteArray);
+    }
+
+    public static FileWriter<EdmElement<?>> fileWriter(Path path) {
+        return FileUtils.fileWriter(path, EdmSerializer::new, EdmIo::toByteArray);
+    }
+
+    public static byte[] toByteArray(EdmElement<?> edmElement) throws IOException{
+        try(var stream = new ByteArrayOutputStream()) {
+            EdmIo.encode(new DataOutputStream(stream), edmElement);
+
+            return stream.toByteArray();
+        }
+    }
+
+    public static EdmElement<?> fromByteArray(byte[] bytes) throws IOException {
+        try(var stream = new ByteArrayInputStream(bytes)) {
+            return EdmIo.decode(new DataInputStream(stream));
+        }
+    }
 
     public static void encode(DataOutput output, EdmElement<?> data) throws IOException {
         output.writeByte(data.type().ordinal());
