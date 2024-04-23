@@ -26,8 +26,8 @@ public interface ExtraDataContext {
     Set<DataTokenHolder<?>> allTokens();
 
     default <C extends ExtraDataContext> C gatherFrom(ExtraDataContext from){
-        for (DataTokenHolder<?> holder : allTokens()) {
-            holder.consume((token, o) -> from.set((DataToken) token, o));
+        for (DataTokenHolder<?> holder : from.allTokens()) {
+            holder.consume((dataToken, o) -> this.set((DataToken) dataToken, o));
         }
 
         return (C) this;

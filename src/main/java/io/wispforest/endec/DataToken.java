@@ -24,7 +24,7 @@ public abstract class DataToken<DATA_TYPE> {
     }
 
     public DataTokenHolder<DATA_TYPE> holderFromUnsafe(Object data){
-        if(!clazz.isInstance(data)) throw new IllegalStateException("Data passed for a given DataToken was found not to be instanceof the token used! [Token: " + this + "]");
+        if(data != null && !clazz.isInstance(data)) throw new IllegalStateException("Data passed for a given DataToken was found not to be instanceof the token used! [Token: " + this + ", Data: " + data + "]");
 
         return new DataTokenHolder<>(this, (DATA_TYPE) data);
     }
@@ -43,9 +43,8 @@ public abstract class DataToken<DATA_TYPE> {
 
     @Override
     public String toString() {
-        return "DataReferenceKey[" +
+        return "DataToken[" +
                 "clazz=" + clazz + "," +
                 "name=" + name + ']';
     }
-
 }
