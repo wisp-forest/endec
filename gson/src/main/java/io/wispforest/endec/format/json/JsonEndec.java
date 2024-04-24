@@ -3,6 +3,7 @@ package io.wispforest.endec.format.json;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonStreamParser;
 import io.wispforest.endec.*;
+import io.wispforest.endec.data.DataTokens;
 
 public final class JsonEndec implements Endec<JsonElement> {
 
@@ -12,7 +13,7 @@ public final class JsonEndec implements Endec<JsonElement> {
 
     @Override
     public void encode(Serializer<?> serializer, JsonElement value) {
-        if (serializer.has(DataToken.SELF_DESCRIBING)) {
+        if (serializer.has(DataTokens.SELF_DESCRIBING)) {
             JsonDeserializer.of(value).readAny(serializer);
             return;
         }

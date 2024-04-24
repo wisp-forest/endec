@@ -1,5 +1,7 @@
 package io.wispforest.endec;
 
+import io.wispforest.endec.data.DataToken;
+import io.wispforest.endec.data.DataTokens;
 import io.wispforest.endec.impl.*;
 import io.wispforest.endec.util.TriConsumer;
 import org.jetbrains.annotations.Nullable;
@@ -179,7 +181,7 @@ public interface Endec<T> {
      */
     static <E extends Enum<E>> Endec<E> forEnum(Class<E> enumClass) {
         return ifToken(
-                DataToken.HUMAN_READABLE,
+                DataTokens.HUMAN_READABLE,
                 STRING.xmap(name -> Arrays.stream(enumClass.getEnumConstants()).filter(e -> e.name().equals(name)).findFirst().get(), Enum::name)
         ).orElse(
                 VAR_INT.xmap(ordinal -> enumClass.getEnumConstants()[ordinal], Enum::ordinal)

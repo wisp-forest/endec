@@ -1,7 +1,7 @@
 package io.wispforest.endec.format.json;
 
 import blue.endless.jankson.*;
-import io.wispforest.endec.DataToken;
+import io.wispforest.endec.data.DataTokens;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.Serializer;
 import io.wispforest.endec.util.RecursiveSerializer;
@@ -13,11 +13,8 @@ public class JsonSerializer extends RecursiveSerializer<JsonElement> {
     private JsonElement prefix;
 
     protected JsonSerializer(JsonElement prefix) {
-        super(null);
+        super(null, DataTokens.SELF_DESCRIBING, DataTokens.HUMAN_READABLE);
         this.prefix = prefix;
-
-        this.set(DataToken.SELF_DESCRIBING, null);
-        this.set(DataToken.HUMAN_READABLE, null);
     }
 
     public static JsonSerializer of(JsonElement prefix) {

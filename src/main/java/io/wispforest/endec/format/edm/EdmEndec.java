@@ -2,6 +2,7 @@ package io.wispforest.endec.format.edm;
 
 import com.google.common.io.ByteStreams;
 import io.wispforest.endec.*;
+import io.wispforest.endec.data.DataTokens;
 
 import java.io.IOException;
 
@@ -15,7 +16,7 @@ public class EdmEndec implements Endec<EdmElement<?>> {
 
     @Override
     public void encode(Serializer<?> serializer, EdmElement<?> value) {
-        if (serializer.has(DataToken.SELF_DESCRIBING)) {
+        if (serializer.has(DataTokens.SELF_DESCRIBING)) {
             new EdmDeserializer(value).readAny(serializer);
             return;
         }

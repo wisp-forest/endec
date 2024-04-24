@@ -2,6 +2,7 @@ package io.wispforest.endec.impl;
 
 import com.mojang.datafixers.util.Either;
 import io.wispforest.endec.*;
+import io.wispforest.endec.data.DataTokens;
 
 public final class EitherEndec <L, R> implements Endec<Either<L, R>> {
 
@@ -19,7 +20,7 @@ public final class EitherEndec <L, R> implements Endec<Either<L, R>> {
 
     @Override
     public void encode(Serializer<?> serializer, Either<L, R> either) {
-        if (serializer.has(DataToken.SELF_DESCRIBING)) {
+        if (serializer.has(DataTokens.SELF_DESCRIBING)) {
             either.ifLeft(left -> this.leftEndec.encode(serializer, left)).ifRight(right -> this.rightEndec.encode(serializer, right));
         } else {
             either.ifLeft(left -> {
@@ -36,7 +37,7 @@ public final class EitherEndec <L, R> implements Endec<Either<L, R>> {
 
     @Override
     public Either<L, R> decode(Deserializer<?> deserializer) {
-        boolean selfDescribing = deserializer.has(DataToken.SELF_DESCRIBING);
+        boolean selfDescribing = deserializer.has(DataTokens.SELF_DESCRIBING);
 
         if (selfDescribing) {
             Either<L, R> leftResult = null;

@@ -4,6 +4,7 @@ import blue.endless.jankson.Jankson;
 import blue.endless.jankson.JsonElement;
 import blue.endless.jankson.api.SyntaxError;
 import io.wispforest.endec.*;
+import io.wispforest.endec.data.DataTokens;
 
 public final class JsonEndec implements Endec<JsonElement> {
 
@@ -15,7 +16,7 @@ public final class JsonEndec implements Endec<JsonElement> {
 
     @Override
     public void encode(Serializer<?> serializer, JsonElement value) {
-        if (serializer.has(DataToken.SELF_DESCRIBING)) {
+        if (serializer.has(DataTokens.SELF_DESCRIBING)) {
             JsonDeserializer.of(value).readAny(serializer);
             return;
         }

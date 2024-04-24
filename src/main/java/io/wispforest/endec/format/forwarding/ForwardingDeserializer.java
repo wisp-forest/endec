@@ -1,29 +1,38 @@
 package io.wispforest.endec.format.forwarding;
 
+import com.google.common.collect.ImmutableMap;
 import io.wispforest.endec.*;
+import io.wispforest.endec.data.DataToken;
 
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 public class ForwardingDeserializer<T> extends ExtraDataDeserializer<T> {
 
     private final Deserializer<T> delegate;
 
-    protected ForwardingDeserializer(Deserializer<T> delegate) {
+    protected ForwardingDeserializer(Deserializer<T> delegate, DataToken.Instance ...instances) {
+        super(instances);
+
         this.delegate = delegate;
     }
 
-    public static <T> ForwardingDeserializer<T> of(Deserializer<T> delegate, Stream<DataTokenHolder<?>> tokens) {
-        var forwardDeserializer = (delegate instanceof SelfDescribedDeserializer<T> selfDescribedDeserializer)
-                ? new ForwardingSelfDescribedDeserializer<>(selfDescribedDeserializer)
-                : new ForwardingDeserializer<>(delegate);
+    public static <T> Deserializer<T> of(Deserializer<T> delegate, DataToken.Instance ...instances) {
+        if(instances.length == 0) return delegate;
 
-        forwardDeserializer.gatherFrom(delegate);
+        return (delegate instanceof SelfDescribedDeserializer<T> selfDescribedDeserializer)
+                ? new ForwardingSelfDescribedDeserializer<>(selfDescribedDeserializer, instances)
+                : new ForwardingDeserializer<>(delegate, instances);
+    }
 
-        tokens.forEach(holder -> holder.consume((token, o) -> forwardDeserializer.set((DataToken) token, o)));
+    @Override
+    public java.util.Map<DataToken<?>, Object> allTokens() {
+        var builder = ImmutableMap.<DataToken<?>, Object>builder();
 
-        return forwardDeserializer;
+        builder.putAll(this.delegate.allTokens());
+        builder.putAll(super.allTokens());
+
+        return builder.build();
     }
 
     public Deserializer<T> delegate() {
@@ -113,8 +122,8 @@ public class ForwardingDeserializer<T> extends ExtraDataDeserializer<T> {
     }
 
     private static class ForwardingSelfDescribedDeserializer<T> extends ForwardingDeserializer<T> implements SelfDescribedDeserializer<T> {
-        private ForwardingSelfDescribedDeserializer(Deserializer<T> delegate) {
-            super(delegate);
+        private ForwardingSelfDescribedDeserializer(Deserializer<T> delegate, DataToken.Instance ...instances) {
+            super(delegate, instances);
         }
 
         @Override

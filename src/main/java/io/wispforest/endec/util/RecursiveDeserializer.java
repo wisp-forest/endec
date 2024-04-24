@@ -1,5 +1,6 @@
 package io.wispforest.endec.util;
 
+import io.wispforest.endec.data.DataToken;
 import io.wispforest.endec.ExtraDataDeserializer;
 import io.wispforest.endec.Deserializer;
 
@@ -25,7 +26,8 @@ public abstract class RecursiveDeserializer<T> extends ExtraDataDeserializer<T> 
     protected final Deque<Frame<T>> frames = new ArrayDeque<>();
     protected final T serialized;
 
-    protected RecursiveDeserializer(T serialized) {
+    protected RecursiveDeserializer(T serialized, DataToken.Instance ...instances) {
+        super(instances);
         this.serialized = serialized;
         this.frames.push(new Frame<>(() -> this.serialized, false));
     }

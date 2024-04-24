@@ -1,25 +1,17 @@
 package io.wispforest.endec;
 
 
-import io.wispforest.endec.format.forwarding.ForwardingDeserializer;
+import io.wispforest.endec.data.DataToken;
+import io.wispforest.endec.data.ExtraDataContext;
 import io.wispforest.endec.format.forwarding.ForwardingSerializer;
 import io.wispforest.endec.util.Endable;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
 import java.util.Optional;
-import java.util.Set;
 
 public interface Serializer<T> extends ExtraDataContext {
 
-    default Serializer<T> withTokens(DataToken<Void>... tokens) {
-        if (tokens.length == 0) return this;
-        return ForwardingSerializer.of(this, Arrays.stream(tokens).map(token -> token.holderFrom(null)));
-    }
-
-    default Serializer<T> withTokens(DataTokenHolder<?>... holders) {
-        if (holders.length == 0) return this;
-        return ForwardingSerializer.of(this, Arrays.stream(holders));
+    default Serializer<T> withTokens(DataToken.Instance ...instances) {
+        return ForwardingSerializer.of(this, instances);
     }
 
     void writeByte(byte value);

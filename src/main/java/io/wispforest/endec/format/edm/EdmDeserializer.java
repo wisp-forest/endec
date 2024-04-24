@@ -1,6 +1,7 @@
 package io.wispforest.endec.format.edm;
 
 import io.wispforest.endec.*;
+import io.wispforest.endec.data.DataTokens;
 import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
@@ -9,9 +10,7 @@ import java.util.*;
 public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implements SelfDescribedDeserializer<EdmElement<?>> {
 
     protected EdmDeserializer(EdmElement<?> serialized) {
-        super(serialized);
-
-        this.set(DataToken.SELF_DESCRIBING, null);
+        super(serialized, DataTokens.SELF_DESCRIBING);
     }
 
     public static EdmDeserializer of(EdmElement<?> serialized) {

@@ -1,5 +1,7 @@
 package io.wispforest.endec;
 
+import io.wispforest.endec.data.DataToken;
+
 import java.util.function.BiFunction;
 import java.util.function.Function;
 

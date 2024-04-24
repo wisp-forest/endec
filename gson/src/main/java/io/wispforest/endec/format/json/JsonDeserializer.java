@@ -3,21 +3,16 @@ package io.wispforest.endec.format.json;
 
 import com.google.gson.*;
 import io.wispforest.endec.*;
+import io.wispforest.endec.data.DataTokens;
 import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.EnumSet;
-import java.util.Iterator;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 public class JsonDeserializer extends RecursiveDeserializer<JsonElement> implements SelfDescribedDeserializer<JsonElement> {
 
     protected JsonDeserializer(JsonElement serialized) {
-        super(serialized);
-
-        this.set(DataToken.SELF_DESCRIBING, null);
-        this.set(DataToken.HUMAN_READABLE, null);
+        super(serialized, DataTokens.SELF_DESCRIBING, DataTokens.HUMAN_READABLE);
     }
 
     public static JsonDeserializer of(JsonElement serialized) {

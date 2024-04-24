@@ -1,6 +1,7 @@
 package io.wispforest.endec.impl;
 
 import io.wispforest.endec.*;
+import io.wispforest.endec.data.DataToken;
 import io.wispforest.endec.util.QuadConsumer;
 import org.jetbrains.annotations.Nullable;
 

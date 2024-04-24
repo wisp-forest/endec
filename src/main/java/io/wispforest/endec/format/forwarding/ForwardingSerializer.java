@@ -1,33 +1,42 @@
 package io.wispforest.endec.format.forwarding;
 
-import io.wispforest.endec.*;
+import com.google.common.collect.ImmutableMap;
+import io.wispforest.endec.data.DataToken;
+import io.wispforest.endec.Endec;
+import io.wispforest.endec.ExtraDataSerializer;
+import io.wispforest.endec.Serializer;
 
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Stream;
 
 public class ForwardingSerializer<T> extends ExtraDataSerializer<T> {
 
     private final Serializer<T> delegate;
 
-    protected ForwardingSerializer(Serializer<T> delegate) {
+    protected ForwardingSerializer(Serializer<T> delegate, DataToken.Instance ...instances) {
+        super(instances);
+
         this.delegate = delegate;
+    }
+
+    public static <T> Serializer<T> of(Serializer<T> delegate, DataToken.Instance ...instances) {
+        if(instances.length == 0) return delegate;
+
+        return new ForwardingSerializer<>(delegate, instances);
+    }
+
+    @Override
+    public java.util.Map<DataToken<?>, Object> allTokens() {
+        var builder = ImmutableMap.<DataToken<?>, Object>builder();
+
+        builder.putAll(this.delegate.allTokens());
+        builder.putAll(super.allTokens());
+
+        return builder.build();
     }
 
     public Serializer<T> delegate() {
         return this.delegate;
     }
-
-    public static <T> ForwardingSerializer<T> of(Serializer<T> delegate, Stream<DataTokenHolder<?>> tokens) {
-        var forwardingSerializer = new ForwardingSerializer<>(delegate);
-
-        forwardingSerializer.gatherFrom(delegate);
-
-        tokens.forEach(holder -> holder.consume((token, o) -> forwardingSerializer.set((DataToken) token, o)));
-
-        return forwardingSerializer;
-    }
-
 
     //--
 

@@ -1,6 +1,6 @@
 package io.wispforest.endec.impl;
 
-import io.wispforest.endec.DataToken;
+import io.wispforest.endec.data.DataToken;
 import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.Serializer;

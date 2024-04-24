@@ -1,19 +1,17 @@
 package io.wispforest.endec.format.edm;
 
 import io.wispforest.endec.*;
+import io.wispforest.endec.data.DataTokens;
 import io.wispforest.endec.util.MutableHolder;
 import io.wispforest.endec.util.RecursiveSerializer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> {
 
     protected EdmSerializer() {
-        super(null);
-
-        this.set(DataToken.SELF_DESCRIBING, null);
+        super(null, DataTokens.SELF_DESCRIBING);
     }
 
     public static EdmSerializer of() {

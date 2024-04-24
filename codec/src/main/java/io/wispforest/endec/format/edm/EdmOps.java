@@ -1,12 +1,12 @@
 package io.wispforest.endec.format.edm;
 
+import com.google.common.collect.ImmutableMap;
 import com.mojang.datafixers.DataFixUtils;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
-import io.wispforest.endec.DataToken;
-import io.wispforest.endec.DataTokenHolder;
-import io.wispforest.endec.ExtraDataContext;
+import io.wispforest.endec.data.DataToken;
+import io.wispforest.endec.data.ExtraDataContext;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.ByteBuffer;
@@ -17,21 +17,21 @@ import java.util.stream.Stream;
 @SuppressWarnings("unchecked")
 public class EdmOps implements DynamicOps<EdmElement<?>>, ExtraDataContext {
 
-    public static final EdmOps INSTANCE = new EdmOps();
+    public static final EdmOps INSTANCE = new EdmOps(Map.of());
 
-    private EdmOps() {}
+    private final java.util.Map<DataToken<?>, Object> contextData;
 
-    public static EdmOps create(ExtraDataContext context) {
-        return new EdmOps().gatherFrom(context);
+    private EdmOps(java.util.Map<DataToken<?>, Object> contextData) {
+        this.contextData = ImmutableMap.copyOf(contextData);
     }
 
-    private final java.util.Map<DataToken<?>, Object> contextData = new HashMap<>();
+    public static EdmOps create(ExtraDataContext context) {
+        return new EdmOps(context.allTokens());
+    }
 
     @Override
-    public Set<DataTokenHolder<?>> allTokens() {
-        return this.contextData.entrySet().stream()
-                .map(entry -> entry.getKey().holderFromUnsafe(entry.getValue()))
-                .collect(Collectors.toSet());
+    public java.util.Map<DataToken<?>, Object> allTokens() {
+        return this.contextData;
     }
 
     @Override
@@ -41,18 +41,8 @@ public class EdmOps implements DynamicOps<EdmElement<?>>, ExtraDataContext {
     }
 
     @Override
-    public <DATA_TYPE> void set(DataToken<DATA_TYPE> token, DATA_TYPE data) {
-        this.contextData.put(token, data);
-    }
-
-    @Override
     public <DATA_TYPE> boolean has(DataToken<DATA_TYPE> token) {
         return this.contextData.containsKey(token);
-    }
-
-    @Override
-    public <DATA_TYPE> void remove(DataToken<DATA_TYPE> token) {
-        this.contextData.remove(token);
     }
 
     // --- Serialization ---

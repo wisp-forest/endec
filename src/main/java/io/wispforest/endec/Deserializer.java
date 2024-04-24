@@ -1,23 +1,18 @@
 package io.wispforest.endec;
 
+import io.wispforest.endec.data.DataToken;
+import io.wispforest.endec.data.ExtraDataContext;
 import io.wispforest.endec.format.forwarding.ForwardingDeserializer;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Optional;
 import java.util.function.Function;
 
 public interface Deserializer<T> extends ExtraDataContext {
 
-    default Deserializer<T> withTokens(DataToken<Void>... tokens) {
-        if (tokens.length == 0) return this;
-        return ForwardingDeserializer.of(this, Arrays.stream(tokens).map(token -> token.holderFrom(null)));
-    }
-
-    default Deserializer<T> withTokens(DataTokenHolder<?>... holders) {
-        if (holders.length == 0) return this;
-        return ForwardingDeserializer.of(this, Arrays.stream(holders));
+    default Deserializer<T> withTokens(DataToken.Instance ...instances) {
+        return ForwardingDeserializer.of(this, instances);
     }
 
     byte readByte();
