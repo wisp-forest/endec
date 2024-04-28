@@ -3,36 +3,17 @@ package io.wispforest.endec.format.forwarding;
 import com.google.common.collect.ImmutableMap;
 import io.wispforest.endec.*;
 import io.wispforest.endec.data.DataToken;
+import io.wispforest.endec.data.ExtraDataContext;
 
 import java.util.Optional;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
-public class ForwardingDeserializer<T> extends ExtraDataDeserializer<T> {
+public class ForwardingDeserializer<T> implements Deserializer<T> {
 
     private final Deserializer<T> delegate;
 
-    protected ForwardingDeserializer(Deserializer<T> delegate, DataToken.Instance ...instances) {
-        super(instances);
-
+    protected ForwardingDeserializer(Deserializer<T> delegate) {
         this.delegate = delegate;
-    }
-
-    public static <T> Deserializer<T> of(Deserializer<T> delegate, DataToken.Instance ...instances) {
-        if(instances.length == 0) return delegate;
-
-        return (delegate instanceof SelfDescribedDeserializer<T> selfDescribedDeserializer)
-                ? new ForwardingSelfDescribedDeserializer<>(selfDescribedDeserializer, instances)
-                : new ForwardingDeserializer<>(delegate, instances);
-    }
-
-    @Override
-    public java.util.Map<DataToken<?>, Object> allTokens() {
-        var builder = ImmutableMap.<DataToken<?>, Object>builder();
-
-        builder.putAll(this.delegate.allTokens());
-        builder.putAll(super.allTokens());
-
-        return builder.build();
     }
 
     public Deserializer<T> delegate() {
@@ -42,73 +23,73 @@ public class ForwardingDeserializer<T> extends ExtraDataDeserializer<T> {
     //--
 
     @Override
-    public byte readByte() {
-        return this.delegate.readByte();
+    public byte readByte(ExtraDataContext ctx) {
+        return this.delegate.readByte(ctx);
     }
 
     @Override
-    public short readShort() {
-        return this.delegate.readShort();
+    public short readShort(ExtraDataContext ctx) {
+        return this.delegate.readShort(ctx);
     }
 
     @Override
-    public int readInt() {
-        return this.delegate.readInt();
+    public int readInt(ExtraDataContext ctx) {
+        return this.delegate.readInt(ctx);
     }
 
     @Override
-    public long readLong() {
-        return this.delegate.readLong();
+    public long readLong(ExtraDataContext ctx) {
+        return this.delegate.readLong(ctx);
     }
 
     @Override
-    public float readFloat() {
-        return this.delegate.readFloat();
+    public float readFloat(ExtraDataContext ctx) {
+        return this.delegate.readFloat(ctx);
     }
 
     @Override
-    public double readDouble() {
-        return this.delegate.readDouble();
+    public double readDouble(ExtraDataContext ctx) {
+        return this.delegate.readDouble(ctx);
     }
 
     @Override
-    public int readVarInt() {
-        return this.delegate.readVarInt();
+    public int readVarInt(ExtraDataContext ctx) {
+        return this.delegate.readVarInt(ctx);
     }
 
     @Override
-    public long readVarLong() {
-        return this.delegate.readVarLong();
+    public long readVarLong(ExtraDataContext ctx) {
+        return this.delegate.readVarLong(ctx);
     }
 
     @Override
-    public boolean readBoolean() {
-        return this.delegate.readBoolean();
+    public boolean readBoolean(ExtraDataContext ctx) {
+        return this.delegate.readBoolean(ctx);
     }
 
     @Override
-    public String readString() {
-        return this.delegate.readString();
+    public String readString(ExtraDataContext ctx) {
+        return this.delegate.readString(ctx);
     }
 
     @Override
-    public byte[] readBytes() {
-        return this.delegate.readBytes();
+    public byte[] readBytes(ExtraDataContext ctx) {
+        return this.delegate.readBytes(ctx);
     }
 
     @Override
-    public <V> Optional<V> readOptional(Endec<V> endec) {
-        return this.delegate.readOptional(endec);
+    public <V> Optional<V> readOptional(ExtraDataContext ctx, Endec<V> endec) {
+        return this.delegate.readOptional(ctx, endec);
     }
 
     @Override
-    public <E> Sequence<E> sequence(Endec<E> elementEndec) {
-        return this.delegate.sequence(elementEndec);
+    public <E> Sequence<E> sequence(ExtraDataContext ctx, Endec<E> elementEndec) {
+        return this.delegate.sequence(ctx, elementEndec);
     }
 
     @Override
-    public <V> Map<V> map(Endec<V> valueEndec) {
-        return this.delegate.map(valueEndec);
+    public <V> Map<V> map(ExtraDataContext ctx, Endec<V> valueEndec) {
+        return this.delegate.map(ctx, valueEndec);
     }
 
     @Override
@@ -117,18 +98,18 @@ public class ForwardingDeserializer<T> extends ExtraDataDeserializer<T> {
     }
 
     @Override
-    public <V> V tryRead(Function<Deserializer<T>, V> reader) {
-        return this.delegate.tryRead(reader);
+    public <V> V tryRead(BiFunction<Deserializer<T>, ExtraDataContext, V> reader, ExtraDataContext ctx) {
+        return this.delegate.tryRead(reader, ctx);
     }
 
     private static class ForwardingSelfDescribedDeserializer<T> extends ForwardingDeserializer<T> implements SelfDescribedDeserializer<T> {
-        private ForwardingSelfDescribedDeserializer(Deserializer<T> delegate, DataToken.Instance ...instances) {
-            super(delegate, instances);
+        private ForwardingSelfDescribedDeserializer(Deserializer<T> delegate) {
+            super(delegate);
         }
 
         @Override
-        public <S> void readAny(Serializer<S> visitor) {
-            ((SelfDescribedDeserializer<T>) this.delegate()).readAny(visitor);
+        public <S> void readAny(Serializer<S> visitor, ExtraDataContext ctx) {
+            ((SelfDescribedDeserializer<T>) this.delegate()).readAny(visitor, ctx);
         }
     }
 }

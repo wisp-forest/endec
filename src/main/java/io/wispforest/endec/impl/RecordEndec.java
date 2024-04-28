@@ -5,6 +5,7 @@ import io.wispforest.endec.Endec;
 import io.wispforest.endec.Serializer;
 import io.wispforest.endec.StructEndec;
 import io.wispforest.endec.annotations.NullableComponent;
+import io.wispforest.endec.data.ExtraDataContext;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -77,13 +78,13 @@ public final class RecordEndec<R extends Record> implements StructEndec<R> {
     }
 
     @Override
-    public R decodeStruct(Deserializer<?> deserializer, Deserializer.Struct struct) {
+    public R decodeStruct(Deserializer<?> deserializer, Deserializer.Struct struct, ExtraDataContext ctx) {
         Object[] fieldValues = new Object[this.fields.size()];
 
         int index = 0;
 
         for (var field : this.fields) {
-            fieldValues[index++] = field.decodeField(struct);
+            fieldValues[index++] = field.decodeField(deserializer, struct, ctx);
         }
 
         try {
@@ -97,7 +98,7 @@ public final class RecordEndec<R extends Record> implements StructEndec<R> {
     }
 
     @Override
-    public void encodeStruct(Serializer<?> serializer, Serializer.Struct struct, R instance) {
-        this.fields.forEach(field -> field.encodeField(struct, instance));
+    public void encodeStruct(Serializer<?> serializer, Serializer.Struct struct, ExtraDataContext ctx, R instance) {
+        this.fields.forEach(field -> field.encodeField(serializer, struct, ctx, instance));
     }
 }

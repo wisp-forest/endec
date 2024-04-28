@@ -26,11 +26,11 @@ public class EdmOps implements DynamicOps<EdmElement<?>>, ExtraDataContext {
     }
 
     public static EdmOps create(ExtraDataContext context) {
-        return new EdmOps(context.allTokens());
+        return new EdmOps(context.tokens());
     }
 
     @Override
-    public java.util.Map<DataToken<?>, Object> allTokens() {
+    public java.util.Map<DataToken<?>, Object> tokens() {
         return this.contextData;
     }
 

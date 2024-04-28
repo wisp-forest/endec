@@ -8,29 +8,30 @@ import io.wispforest.endec.util.Endable;
 
 import java.util.Optional;
 
-public interface Serializer<T> extends ExtraDataContext {
+public interface Serializer<T> {
 
-    default Serializer<T> withTokens(DataToken.Instance ...instances) {
-        return ForwardingSerializer.of(this, instances);
+    default ExtraDataContext initalContext(ExtraDataContext ctx) {
+        return ctx;
     }
 
-    void writeByte(byte value);
-    void writeShort(short value);
-    void writeInt(int value);
-    void writeLong(long value);
-    void writeFloat(float value);
-    void writeDouble(double value);
+    void writeByte(ExtraDataContext ctx, byte value);
+    void writeShort(ExtraDataContext ctx, short value);
+    void writeInt(ExtraDataContext ctx, int value);
+    void writeLong(ExtraDataContext ctx, long value);
+    void writeFloat(ExtraDataContext ctx, float value);
+    void writeDouble(ExtraDataContext ctx, double value);
 
-    void writeVarInt(int value);
-    void writeVarLong(long value);
+    void writeVarInt(ExtraDataContext ctx, int value);
+    void writeVarLong(ExtraDataContext ctx, long value);
 
-    void writeBoolean(boolean value);
-    void writeString(String value);
-    void writeBytes(byte[] bytes);
-    <V> void writeOptional(Endec<V> endec, Optional<V> optional);
+    void writeBoolean(ExtraDataContext ctx, boolean value);
+    void writeString(ExtraDataContext ctx, String value);
+    void writeBytes(ExtraDataContext ctx, byte[] bytes);
 
-    <E> Sequence<E> sequence(Endec<E> elementEndec, int size);
-    <V> Map<V> map(Endec<V> valueEndec, int size);
+    <V> void writeOptional(ExtraDataContext ctx, Endec<V> endec, Optional<V> optional);
+
+    <E> Sequence<E> sequence(ExtraDataContext ctx, Endec<E> elementEndec, int size);
+    <V> Map<V> map(ExtraDataContext ctx, Endec<V> valueEndec, int size);
     Struct struct();
 
     T result();
@@ -44,6 +45,6 @@ public interface Serializer<T> extends ExtraDataContext {
     }
 
     interface Struct extends Endable {
-        <F> Struct field(String name, Endec<F> endec, F value);
+        <F> Struct field(ExtraDataContext ctx, String name, Endec<F> endec, F value);
     }
 }

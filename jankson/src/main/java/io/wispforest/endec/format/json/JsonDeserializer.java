@@ -4,6 +4,7 @@ package io.wispforest.endec.format.json;
 import blue.endless.jankson.*;
 import io.wispforest.endec.*;
 import io.wispforest.endec.data.DataTokens;
+import io.wispforest.endec.data.ExtraDataContext;
 import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,42 +15,52 @@ import java.util.Optional;
 public class JsonDeserializer extends RecursiveDeserializer<JsonElement> implements SelfDescribedDeserializer<JsonElement> {
 
     protected JsonDeserializer(JsonElement serialized) {
-        super(serialized, DataTokens.SELF_DESCRIBING, DataTokens.HUMAN_READABLE);
+        super(serialized);
     }
 
     public static JsonDeserializer of(JsonElement serialized) {
         return new JsonDeserializer(serialized);
     }
 
+    @Override
+    public ExtraDataContext initalContext(ExtraDataContext ctx) {
+        if(!ctx.has(DataTokens.HUMAN_READABLE)) {
+            return ctx.with(DataTokens.HUMAN_READABLE.with(true));
+        }
+
+        return ctx;
+    }
+
+
     // ---
 
     @Override
-    public byte readByte() {
+    public byte readByte(ExtraDataContext ctx) {
         return readPrimitive(Byte.class);
     }
 
     @Override
-    public short readShort() {
+    public short readShort(ExtraDataContext ctx) {
         return readPrimitive(Short.class);
     }
 
     @Override
-    public int readInt() {
+    public int readInt(ExtraDataContext ctx) {
         return readPrimitive(Integer.class);
     }
 
     @Override
-    public long readLong() {
+    public long readLong(ExtraDataContext ctx) {
         return readPrimitive(Long.class);
     }
 
     @Override
-    public float readFloat() {
+    public float readFloat(ExtraDataContext ctx) {
         return readPrimitive(Float.class);
     }
 
     @Override
-    public double readDouble() {
+    public double readDouble(ExtraDataContext ctx) {
         return readPrimitive(Double.class);
     }
 
@@ -60,29 +71,29 @@ public class JsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
     // ---
 
     @Override
-    public int readVarInt() {
-        return this.readInt();
+    public int readVarInt(ExtraDataContext ctx) {
+        return this.readInt(ctx);
     }
 
     @Override
-    public long readVarLong() {
-        return this.readLong();
+    public long readVarLong(ExtraDataContext ctx) {
+        return this.readLong(ctx);
     }
 
     // ---
 
     @Override
-    public boolean readBoolean() {
+    public boolean readBoolean(ExtraDataContext ctx) {
         return readPrimitive(Boolean.class);
     }
 
     @Override
-    public String readString() {
+    public String readString(ExtraDataContext ctx) {
         return readPrimitive(String.class);
     }
 
     @Override
-    public byte[] readBytes() {
+    public byte[] readBytes(ExtraDataContext ctx) {
         var array = ((JsonArray) this.getValue()).toArray();
 
         var result = new byte[array.length];
@@ -94,23 +105,23 @@ public class JsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
     }
 
     @Override
-    public <V> Optional<V> readOptional(Endec<V> endec) {
+    public <V> Optional<V> readOptional(ExtraDataContext ctx, Endec<V> endec) {
         var value = this.getValue();
         return !(value instanceof JsonNull)
-                ? Optional.of(endec.decode(this))
+                ? Optional.of(endec.decode(this, ctx))
                 : Optional.empty();
     }
 
     // ---
 
     @Override
-    public <E> Deserializer.Sequence<E> sequence(Endec<E> elementEndec) {
-        return new Sequence<>(elementEndec, (JsonArray) this.getValue());
+    public <E> Deserializer.Sequence<E> sequence(ExtraDataContext ctx, Endec<E> elementEndec) {
+        return new Sequence<>(elementEndec, (JsonArray) this.getValue(), ctx);
     }
 
     @Override
-    public <V> Deserializer.Map<V> map(Endec<V> valueEndec) {
-        return new Map<>(valueEndec, ((JsonObject) this.getValue()));
+    public <V> Deserializer.Map<V> map(ExtraDataContext ctx, Endec<V> valueEndec) {
+        return new Map<>(valueEndec, ((JsonObject) this.getValue()), ctx);
     }
 
     @Override
@@ -121,18 +132,18 @@ public class JsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
     // ---
 
     @Override
-    public <S> void readAny(Serializer<S> visitor) {
-        this.decodeValue(visitor, this.getValue());
+    public <S> void readAny(Serializer<S> visitor, ExtraDataContext ctx) {
+        this.decodeValue(visitor, ctx, this.getValue());
     }
 
-    private <S> void decodeValue(Serializer<S> visitor, JsonElement element) {
+    private <S> void decodeValue(Serializer<S> visitor, ExtraDataContext ctx, JsonElement element) {
         if (element instanceof JsonNull) {
-            visitor.writeOptional(JsonEndec.INSTANCE, Optional.empty());
+            visitor.writeOptional(ctx, JsonEndec.INSTANCE, Optional.empty());
         } else if (element instanceof JsonPrimitive primitive) {
             if (primitive.getValue() instanceof String s) {
-                visitor.writeString(s);
+                visitor.writeString(ctx, s);
             } else if (primitive.getValue() instanceof Boolean b) {
-                visitor.writeBoolean(b);
+                visitor.writeBoolean(ctx, b);
             } else {
                 var value = primitive.asBigDecimal(BigDecimal.ZERO);
 
@@ -140,30 +151,30 @@ public class JsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
                     var asLong = value.longValueExact();
 
                     if ((byte) asLong == asLong) {
-                        visitor.writeByte((byte) primitive.getValue());
+                        visitor.writeByte(ctx, (byte) primitive.getValue());
                     } else if ((short) asLong == asLong) {
-                        visitor.writeShort((short) primitive.getValue());
+                        visitor.writeShort(ctx, (short) primitive.getValue());
                     } else if ((int) asLong == asLong) {
-                        visitor.writeInt((int) primitive.getValue());
+                        visitor.writeInt(ctx, (int) primitive.getValue());
                     } else {
-                        visitor.writeLong(asLong);
+                        visitor.writeLong(ctx, asLong);
                     }
                 } catch (ArithmeticException bruh /* quite cringe java moment, why use an exception for this */) {
                     var asDouble = value.doubleValue();
 
                     if ((float) asDouble == asDouble) {
-                        visitor.writeFloat((float) primitive.getValue());
+                        visitor.writeFloat(ctx, (float) primitive.getValue());
                     } else {
-                        visitor.writeDouble(asDouble);
+                        visitor.writeDouble(ctx, asDouble);
                     }
                 }
             }
         } else if (element instanceof JsonArray array) {
-            try (var sequence = visitor.sequence(Endec.<JsonElement>of(this::decodeValue, deserializer -> null), array.size())) {
+            try (var sequence = visitor.sequence(ctx, Endec.<JsonElement>of(this::decodeValue, (deserializer, ctx1) -> null), array.size())) {
                 array.forEach(sequence::element);
             }
         } else if (element instanceof JsonObject object) {
-            try (var map = visitor.map(Endec.<JsonElement>of(this::decodeValue, deserializer -> null), object.size())) {
+            try (var map = visitor.map(ctx, Endec.<JsonElement>of(this::decodeValue, (deserializer, ctx1) -> null), object.size())) {
                 object.forEach(map::entry);
             }
         } else {
@@ -177,10 +188,15 @@ public class JsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
 
         private final Endec<V> valueEndec;
         private final Iterator<JsonElement> elements;
+
+        private final ExtraDataContext ctx;
+
         private final int size;
 
-        private Sequence(Endec<V> valueEndec, JsonArray elements) {
+        private Sequence(Endec<V> valueEndec, JsonArray elements, ExtraDataContext ctx) {
             this.valueEndec = valueEndec;
+
+            this.ctx = ctx;
 
             this.elements = elements.iterator();
             this.size = elements.size();
@@ -200,7 +216,7 @@ public class JsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
         public V next() {
             return JsonDeserializer.this.frame(
                     this.elements::next,
-                    () -> this.valueEndec.decode(JsonDeserializer.this),
+                    () -> this.valueEndec.decode(JsonDeserializer.this, ctx),
                     false
             );
         }
@@ -210,10 +226,15 @@ public class JsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
 
         private final Endec<V> valueEndec;
         private final Iterator<java.util.Map.Entry<String, JsonElement>> entries;
+
+        private final ExtraDataContext ctx;
+
         private final int size;
 
-        private Map(Endec<V> valueEndec, JsonObject entries) {
+        private Map(Endec<V> valueEndec, JsonObject entries, ExtraDataContext ctx) {
             this.valueEndec = valueEndec;
+
+            this.ctx = ctx;
 
             this.entries = entries.entrySet().iterator();
             this.size = entries.size();
@@ -234,7 +255,7 @@ public class JsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
             var entry = entries.next();
             return JsonDeserializer.this.frame(
                     entry::getValue,
-                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(JsonDeserializer.this)),
+                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(JsonDeserializer.this, ctx)),
                     false
             );
         }
@@ -249,23 +270,23 @@ public class JsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
         }
 
         @Override
-        public <F> @Nullable F field(String name, Endec<F> endec) {
+        public <F> @Nullable F field(ExtraDataContext ctx, String name, Endec<F> endec) {
             if (!this.object.containsKey(name)) {
                 throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
             }
             return JsonDeserializer.this.frame(
                     () -> this.object.get(name),
-                    () -> endec.decode(JsonDeserializer.this),
+                    () -> endec.decode(JsonDeserializer.this, ctx),
                     true
             );
         }
 
         @Override
-        public <F> @Nullable F field(String name, Endec<F> endec, @Nullable F defaultValue) {
+        public <F> @Nullable F field(ExtraDataContext ctx, String name, Endec<F> endec, @Nullable F defaultValue) {
             if (!this.object.containsKey(name)) return defaultValue;
             return JsonDeserializer.this.frame(
                     () -> this.object.get(name),
-                    () -> endec.decode(JsonDeserializer.this),
+                    () -> endec.decode(JsonDeserializer.this, ctx),
                     true
             );
         }

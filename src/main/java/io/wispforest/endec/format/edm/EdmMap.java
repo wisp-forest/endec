@@ -1,6 +1,7 @@
 package io.wispforest.endec.format.edm;
 
 
+import io.wispforest.endec.data.ExtraDataContext;
 import io.wispforest.endec.impl.KeyedEndec;
 import io.wispforest.endec.util.MapCarrier;
 import org.jetbrains.annotations.NotNull;
@@ -19,14 +20,14 @@ public final class EdmMap extends EdmElement<Map<String, EdmElement<?>>> impleme
     }
 
     @Override
-    public <T> T getWithErrors(@NotNull KeyedEndec<T> key) {
+    public <T> T getWithErrors(@NotNull KeyedEndec<T> key, ExtraDataContext ctx) {
         if (!this.has(key)) return key.defaultValue();
-        return key.endec().decodeFully(EdmDeserializer::of, this.map.get(key.key()));
+        return key.endec().<EdmElement<?>>decodeFully(EdmDeserializer::of, this.map.get(key.key()), ctx.instances());
     }
 
     @Override
-    public <T> void put(@NotNull KeyedEndec<T> key, @NotNull T value) {
-        this.map.put(key.key(), key.endec().encodeFully(EdmSerializer::of, value));
+    public <T> void put(@NotNull KeyedEndec<T> key, ExtraDataContext ctx, @NotNull T value) {
+        this.map.put(key.key(), key.endec().encodeFully(EdmSerializer::of, value, ctx.instances()));
     }
 
     @Override

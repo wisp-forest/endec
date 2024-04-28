@@ -1,11 +1,11 @@
 package io.wispforest.endec.util;
 
-import io.wispforest.endec.data.DataToken;
-import io.wispforest.endec.ExtraDataDeserializer;
 import io.wispforest.endec.Deserializer;
+import io.wispforest.endec.data.ExtraDataContext;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -21,13 +21,12 @@ import java.util.function.Supplier;
  * {@link io.wispforest.owo.serialization.format.json.JsonDeserializer} for some reference
  * implementations
  */
-public abstract class RecursiveDeserializer<T> extends ExtraDataDeserializer<T> {
+public abstract class RecursiveDeserializer<T> implements Deserializer<T> {
 
     protected final Deque<Frame<T>> frames = new ArrayDeque<>();
     protected final T serialized;
 
-    protected RecursiveDeserializer(T serialized, DataToken.Instance ...instances) {
-        super(instances);
+    protected RecursiveDeserializer(T serialized) {
         this.serialized = serialized;
         this.frames.push(new Frame<>(() -> this.serialized, false));
     }
@@ -68,11 +67,11 @@ public abstract class RecursiveDeserializer<T> extends ExtraDataDeserializer<T> 
     }
 
     @Override
-    public <V> V tryRead(Function<Deserializer<T>, V> reader) {
+    public <V> V tryRead(BiFunction<Deserializer<T>, ExtraDataContext, V> reader, ExtraDataContext ctx) {
         var framesBackup = new ArrayDeque<>(this.frames);
 
         try {
-            return reader.apply(this);
+            return reader.apply(this, ctx);
         } catch (Exception e) {
             this.frames.clear();
             this.frames.addAll(framesBackup);

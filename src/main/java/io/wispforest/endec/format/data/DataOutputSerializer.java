@@ -1,15 +1,15 @@
 package io.wispforest.endec.format.data;
 
 import io.wispforest.endec.Endec;
-import io.wispforest.endec.ExtraDataSerializer;
 import io.wispforest.endec.Serializer;
+import io.wispforest.endec.data.ExtraDataContext;
 import io.wispforest.endec.util.VarUtils;
 
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Optional;
 
-public class DataOutputSerializer<D extends DataOutput> extends ExtraDataSerializer<D> {
+public class DataOutputSerializer<D extends DataOutput> implements Serializer<D> {
 
     protected final D output;
 
@@ -32,90 +32,90 @@ public class DataOutputSerializer<D extends DataOutput> extends ExtraDataSeriali
     // ---
 
     @Override
-    public void writeByte(byte value) {
+    public void writeByte(ExtraDataContext ctx, byte value) {
         this.write(() -> this.output.writeByte(value));
     }
 
     @Override
-    public void writeShort(short value) {
+    public void writeShort(ExtraDataContext ctx, short value) {
         this.write(() -> this.output.writeShort(value));
     }
 
     @Override
-    public void writeInt(int value) {
+    public void writeInt(ExtraDataContext ctx, int value) {
         this.write(() -> this.output.writeInt(value));
     }
 
     @Override
-    public void writeLong(long value) {
+    public void writeLong(ExtraDataContext ctx, long value) {
         this.write(() -> this.output.writeLong(value));
     }
 
     @Override
-    public void writeFloat(float value) {
+    public void writeFloat(ExtraDataContext ctx, float value) {
         this.write(() -> this.output.writeFloat(value));
     }
 
     @Override
-    public void writeDouble(double value) {
+    public void writeDouble(ExtraDataContext ctx, double value) {
         this.write(() -> this.output.writeDouble(value));
     }
 
     // ---
 
     @Override
-    public void writeVarInt(int value) {
-        VarUtils.writeInt(value, this::writeByte);
+    public void writeVarInt(ExtraDataContext ctx, int value) {
+        VarUtils.writeInt(value, value1 -> writeByte(ctx, value1));
     }
 
     @Override
-    public void writeVarLong(long value) {
-        VarUtils.writeLong(value, this::writeByte);
+    public void writeVarLong(ExtraDataContext ctx, long value) {
+        VarUtils.writeLong(value, value1 -> writeByte(ctx, value1));
     }
 
     // ---
 
     @Override
-    public void writeBoolean(boolean value) {
+    public void writeBoolean(ExtraDataContext ctx, boolean value) {
         this.write(() -> this.output.writeBoolean(value));
     }
 
     @Override
-    public void writeString(String value) {
+    public void writeString(ExtraDataContext ctx, String value) {
         this.write(() -> this.output.writeUTF(value));
     }
 
     @Override
-    public void writeBytes(byte[] bytes) {
+    public void writeBytes(ExtraDataContext ctx, byte[] bytes) {
         this.write(() -> {
-            this.writeVarInt(bytes.length);
+            this.writeVarInt(ctx, bytes.length);
             this.output.write(bytes);
         });
     }
 
     @Override
-    public <V> void writeOptional(Endec<V> endec, Optional<V> optional) {
-        this.writeBoolean(optional.isPresent());
-        optional.ifPresent(value -> endec.encode(this, value));
+    public <V> void writeOptional(ExtraDataContext ctx, Endec<V> endec, Optional<V> optional) {
+        this.writeBoolean(ctx, optional.isPresent());
+        optional.ifPresent(value -> endec.encode(this, ctx, value));
     }
 
     // ---
 
     @Override
-    public <V> Map<V> map(Endec<V> valueEndec, int size) {
-        this.writeVarInt(size);
-        return new Sequence<>(valueEndec);
+    public <V> Map<V> map(ExtraDataContext ctx, Endec<V> valueEndec, int size) {
+        this.writeVarInt(ctx, size);
+        return new Sequence<>(valueEndec, ctx);
     }
 
     @Override
-    public <E> Serializer.Sequence<E> sequence(Endec<E> elementEndec, int size) {
-        this.writeVarInt(size);
-        return new Sequence<>(elementEndec);
+    public <E> Serializer.Sequence<E> sequence(ExtraDataContext ctx, Endec<E> elementEndec, int size) {
+        this.writeVarInt(ctx, size);
+        return new Sequence<>(elementEndec, ctx);
     }
 
     @Override
     public Struct struct() {
-        return new Sequence<>(null);
+        return new Sequence<>(null, ExtraDataContext.of());
     }
 
     // ---
@@ -131,24 +131,27 @@ public class DataOutputSerializer<D extends DataOutput> extends ExtraDataSeriali
 
         protected final Endec<V> valueEndec;
 
-        protected Sequence(Endec<V> valueEndec) {
+        private final ExtraDataContext ctx;
+
+        protected Sequence(Endec<V> valueEndec, ExtraDataContext ctx) {
             this.valueEndec = valueEndec;
+            this.ctx = ctx;
         }
 
         @Override
         public void element(V element) {
-            this.valueEndec.encode(DataOutputSerializer.this, element);
+            this.valueEndec.encode(DataOutputSerializer.this, ctx, element);
         }
 
         @Override
         public void entry(String key, V value) {
-            DataOutputSerializer.this.writeString(key);
-            this.valueEndec.encode(DataOutputSerializer.this, value);
+            DataOutputSerializer.this.writeString(ctx, key);
+            this.valueEndec.encode(DataOutputSerializer.this, ctx, value);
         }
 
         @Override
-        public <F> Struct field(String name, Endec<F> endec, F value) {
-            endec.encode(DataOutputSerializer.this, value);
+        public <F> Struct field(ExtraDataContext ctx, String name, Endec<F> endec, F value) {
+            endec.encode(DataOutputSerializer.this, ctx, value);
             return this;
         }
 

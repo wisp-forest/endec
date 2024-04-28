@@ -2,16 +2,16 @@ package io.wispforest.endec.format.data;
 
 import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
-import io.wispforest.endec.ExtraDataDeserializer;
+import io.wispforest.endec.data.ExtraDataContext;
 import io.wispforest.endec.util.VarUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.DataInput;
 import java.io.IOException;
 import java.util.Optional;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
-public class DataInputDeserializer extends ExtraDataDeserializer<DataInput> {
+public class DataInputDeserializer implements Deserializer<DataInput> {
 
     protected final DataInput input;
 
@@ -26,7 +26,7 @@ public class DataInputDeserializer extends ExtraDataDeserializer<DataInput> {
     // ---
 
     @Override
-    public byte readByte() {
+    public byte readByte(ExtraDataContext ctx) {
         try {
             return this.input.readByte();
         } catch (IOException e) {
@@ -35,7 +35,7 @@ public class DataInputDeserializer extends ExtraDataDeserializer<DataInput> {
     }
 
     @Override
-    public short readShort() {
+    public short readShort(ExtraDataContext ctx) {
         try {
             return this.input.readShort();
         } catch (IOException e) {
@@ -44,7 +44,7 @@ public class DataInputDeserializer extends ExtraDataDeserializer<DataInput> {
     }
 
     @Override
-    public int readInt() {
+    public int readInt(ExtraDataContext ctx) {
         try {
             return this.input.readInt();
         } catch (IOException e) {
@@ -53,7 +53,7 @@ public class DataInputDeserializer extends ExtraDataDeserializer<DataInput> {
     }
 
     @Override
-    public long readLong() {
+    public long readLong(ExtraDataContext ctx) {
         try {
             return this.input.readLong();
         } catch (IOException e) {
@@ -62,7 +62,7 @@ public class DataInputDeserializer extends ExtraDataDeserializer<DataInput> {
     }
 
     @Override
-    public float readFloat() {
+    public float readFloat(ExtraDataContext ctx) {
         try {
             return this.input.readFloat();
         } catch (IOException e) {
@@ -71,7 +71,7 @@ public class DataInputDeserializer extends ExtraDataDeserializer<DataInput> {
     }
 
     @Override
-    public double readDouble() {
+    public double readDouble(ExtraDataContext ctx) {
         try {
             return this.input.readDouble();
         } catch (IOException e) {
@@ -82,19 +82,19 @@ public class DataInputDeserializer extends ExtraDataDeserializer<DataInput> {
     // ---
 
     @Override
-    public int readVarInt() {
-        return VarUtils.readInt(this::readByte);
+    public int readVarInt(ExtraDataContext ctx) {
+        return VarUtils.readInt(() -> readByte(ctx));
     }
 
     @Override
-    public long readVarLong() {
-        return VarUtils.readLong(this::readByte);
+    public long readVarLong(ExtraDataContext ctx) {
+        return VarUtils.readLong(() -> readByte(ctx));
     }
 
     // ---
 
     @Override
-    public boolean readBoolean() {
+    public boolean readBoolean(ExtraDataContext ctx) {
         try {
             return this.input.readBoolean();
         } catch (IOException e) {
@@ -103,7 +103,7 @@ public class DataInputDeserializer extends ExtraDataDeserializer<DataInput> {
     }
 
     @Override
-    public String readString() {
+    public String readString(ExtraDataContext ctx) {
         try {
             return this.input.readUTF();
         } catch (IOException e) {
@@ -112,8 +112,8 @@ public class DataInputDeserializer extends ExtraDataDeserializer<DataInput> {
     }
 
     @Override
-    public byte[] readBytes() {
-        var result = new byte[this.readVarInt()];
+    public byte[] readBytes(ExtraDataContext ctx) {
+        var result = new byte[this.readVarInt(ctx)];
 
         try {
             this.input.readFully(result);
@@ -125,34 +125,34 @@ public class DataInputDeserializer extends ExtraDataDeserializer<DataInput> {
     }
 
     @Override
-    public <V> Optional<V> readOptional(Endec<V> endec) {
-        return this.readBoolean()
-                ? Optional.of(endec.decode(this))
+    public <V> Optional<V> readOptional(ExtraDataContext ctx, Endec<V> endec) {
+        return this.readBoolean(ctx)
+                ? Optional.of(endec.decode(this, ctx))
                 : Optional.empty();
     }
 
     // ---
 
     @Override
-    public <V> V tryRead(Function<Deserializer<DataInput>, V> reader) {
+    public <V> V tryRead(BiFunction<Deserializer<DataInput>, ExtraDataContext, V> reader, ExtraDataContext ctx) {
         throw new UnsupportedOperationException("As DataInput cannot be rewound, tryRead(...) cannot be supported");
     }
 
     // ---
 
     @Override
-    public <E> Deserializer.Sequence<E> sequence(Endec<E> elementEndec) {
-        return new Sequence<>(elementEndec, this.readVarInt());
+    public <E> Deserializer.Sequence<E> sequence(ExtraDataContext ctx, Endec<E> elementEndec) {
+        return new Sequence<>(elementEndec, this.readVarInt(ctx), ctx);
     }
 
     @Override
-    public <V> Deserializer.Map<V> map(Endec<V> valueEndec) {
-        return new Map<>(valueEndec, this.readVarInt());
+    public <V> Deserializer.Map<V> map(ExtraDataContext ctx, Endec<V> valueEndec) {
+        return new Map<>(valueEndec, this.readVarInt(ctx), ctx);
     }
 
     @Override
     public Struct struct() {
-        return new Sequence<>(null, 0);
+        return new Sequence<>(null, 0, ExtraDataContext.of());
     }
 
     // ---
@@ -160,13 +160,17 @@ public class DataInputDeserializer extends ExtraDataDeserializer<DataInput> {
     private class Sequence<V> implements Deserializer.Sequence<V>, Struct {
 
         private final Endec<V> valueEndec;
+        private final ExtraDataContext ctx;
+
         private final int size;
 
         private int index = 0;
 
-        private Sequence(Endec<V> valueEndec, int size) {
+        private Sequence(Endec<V> valueEndec, int size, ExtraDataContext ctx) {
             this.valueEndec = valueEndec;
             this.size = size;
+
+            this.ctx = ctx;
         }
 
         @Override
@@ -182,30 +186,34 @@ public class DataInputDeserializer extends ExtraDataDeserializer<DataInput> {
         @Override
         public V next() {
             this.index++;
-            return this.valueEndec.decode(DataInputDeserializer.this);
+            return this.valueEndec.decode(DataInputDeserializer.this, ctx);
         }
 
         @Override
-        public <F> @Nullable F field(String name, Endec<F> endec) {
-            return endec.decode(DataInputDeserializer.this);
+        public <F> @Nullable F field(ExtraDataContext ctx, String name, Endec<F> endec) {
+            return endec.decode(DataInputDeserializer.this, ctx);
         }
 
         @Override
-        public <F> @Nullable F field(@Nullable String field, Endec<F> endec, @Nullable F defaultValue) {
-            return endec.decode(DataInputDeserializer.this);
+        public <F> @Nullable F field(ExtraDataContext ctx, @Nullable String field, Endec<F> endec, @Nullable F defaultValue) {
+            return endec.decode(DataInputDeserializer.this, ctx);
         }
     }
 
     private class Map<V> implements Deserializer.Map<V> {
 
         private final Endec<V> valueEndec;
+        private final ExtraDataContext ctx;
+
         private final int size;
 
         private int index = 0;
 
-        private Map(Endec<V> valueEndec, int size) {
+        private Map(Endec<V> valueEndec, int size, ExtraDataContext ctx) {
             this.valueEndec = valueEndec;
             this.size = size;
+
+            this.ctx = ctx;
         }
 
         @Override
@@ -222,8 +230,8 @@ public class DataInputDeserializer extends ExtraDataDeserializer<DataInput> {
         public java.util.Map.Entry<String, V> next() {
             this.index++;
             return java.util.Map.entry(
-                    DataInputDeserializer.this.readString(),
-                    this.valueEndec.decode(DataInputDeserializer.this)
+                    DataInputDeserializer.this.readString(ctx),
+                    this.valueEndec.decode(DataInputDeserializer.this, ctx)
             );
         }
     }

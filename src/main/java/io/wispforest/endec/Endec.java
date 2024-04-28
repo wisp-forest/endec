@@ -1,9 +1,10 @@
 package io.wispforest.endec;
 
-import io.wispforest.endec.data.DataToken;
-import io.wispforest.endec.data.DataTokens;
+import io.wispforest.endec.data.*;
 import io.wispforest.endec.impl.*;
+import io.wispforest.endec.util.QuadConsumer;
 import io.wispforest.endec.util.TriConsumer;
+import io.wispforest.endec.util.TriFunction;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -13,49 +14,52 @@ import java.util.function.*;
  * A combined <b>en</b>coder and <b>dec</b>oder for values of type {@code T}.
  * <p>
  * To convert between single instances of {@code T} and their serialized form,
- * use {@link #encodeFully(Supplier, Object)} and {@link #decodeFully(Function, Object)}
+ * use {@link #encodeFully(Supplier, ExtraDataContext, Object)} and {@link #decodeFully(Function, ExtraDataContext, Object)}
  */
 public interface Endec<T> {
 
     /**
      * Write all data required to reconstruct {@code value} into {@code serializer}
      */
-    void encode(Serializer<?> serializer, T value);
+    void encode(Serializer<?> serializer, ExtraDataContext ctx, T value);
 
     /**
-     * Decode the data specified by {@link #encode(Serializer, Object)} and reconstruct
+     * Decode the data specified by {@link #encode(Serializer, ExtraDataContext, Object)} and reconstruct
      * the corresponding instance of {@code T}.
      * <p>
      * Endecs which intend to handle deserialization failure by decoding a different
      * structure on error, must wrap their initial reads in a call to {@link Deserializer#tryRead(Function)}
      * to ensure that deserializer state is restored for the subsequent attempt
      */
-    T decode(Deserializer<?> deserializer);
+    T decode(Deserializer<?> deserializer, ExtraDataContext ctx);
 
     // ---
 
     /**
-     * Create a new serializer with result type {@code E}, call {@link #encode(Serializer, Object)}
+     * Create a new serializer with result type {@code E}, call {@link #encode(Serializer, ExtraDataContext, Object)}
      * once for the provided {@code value} and return the serializer's {@linkplain Serializer#result() result}
      */
-    default <E> E encodeFully(Supplier<Serializer<E>> serializerConstructor, T value) {
+    default <E> E encodeFully(Supplier<Serializer<E>> serializerConstructor, T value, DataToken.Instance ...instances) {
         var serializer = serializerConstructor.get();
-        this.encode(serializer, value);
+
+        this.encode(serializer, serializer.initalContext(ExtraDataContext.of(instances)), value);
 
         return serializer.result();
     }
 
     /**
      * Create a new deserializer by calling {@code deserializerConstructor} with {@code value}
-     * and return the result of {@link #decode(Deserializer)}
+     * and return the result of {@link #decode(Deserializer, ExtraDataContext)}
      */
-    default <E> T decodeFully(Function<E, Deserializer<E>> deserializerConstructor, E value) {
-        return this.decode(deserializerConstructor.apply(value));
+    default <E> T decodeFully(Function<E, Deserializer<E>> deserializerConstructor, E value, DataToken.Instance ...instances) {
+        var deserializer = deserializerConstructor.apply(value);
+
+        return this.decode(deserializer, deserializer.initalContext(ExtraDataContext.of(instances)));
     }
 
     // --- Serializer Primitives ---
 
-    Endec<Void> VOID = Endec.of((serializer, unused) -> {}, deserializer -> null);
+    Endec<Void> VOID = Endec.of((serializer, ctx, unused) -> {}, (deserializer, ctx) -> null);
 
     Endec<Boolean> BOOLEAN = Endec.of(Serializer::writeBoolean, Deserializer::readBoolean);
     Endec<Byte> BYTE = Endec.of(Serializer::writeByte, Deserializer::readByte);
@@ -76,12 +80,12 @@ public interface Endec<T> {
      * serialized using this endec
      */
     default Endec<List<T>> listOf() {
-        return of((serializer, list) -> {
-            try (var sequence = serializer.sequence(this, list.size())) {
+        return of((serializer, ctx, list) -> {
+            try (var sequence = serializer.sequence(ctx, this, list.size())) {
                 list.forEach(sequence::element);
             }
-        }, deserializer -> {
-            var sequenceState = deserializer.sequence(this);
+        }, (deserializer, ctx) -> {
+            var sequenceState = deserializer.sequence(ctx, this);
 
             var list = new ArrayList<T>(sequenceState.estimatedSize());
             sequenceState.forEachRemaining(list::add);
@@ -95,12 +99,12 @@ public interface Endec<T> {
      * keys to values serialized using this endec
      */
     default Endec<Map<String, T>> mapOf() {
-        return of((serializer, map) -> {
-            try (var mapState = serializer.map(this, map.size())) {
+        return of((serializer, ctx, map) -> {
+            try (var mapState = serializer.map(ctx, this, map.size())) {
                 map.forEach(mapState::entry);
             }
-        }, deserializer -> {
-            var mapState = deserializer.map(this);
+        }, (deserializer, ctx) -> {
+            var mapState = deserializer.map(ctx, this);
 
             var map = new HashMap<String, T>(mapState.estimatedSize());
             mapState.forEachRemaining(entry -> map.put(entry.getKey(), entry.getValue()));
@@ -115,23 +119,23 @@ public interface Endec<T> {
      */
     default Endec<Optional<T>> optionalOf() {
         return of(
-                (serializer, value) -> serializer.writeOptional(this, value),
-                deserializer -> deserializer.readOptional(this)
+                (serializer, ctx, value) -> serializer.writeOptional(ctx, this, value),
+                (deserializer, ctx) -> deserializer.readOptional(ctx, this)
         );
     }
 
     // --- Constructors ---
 
-    static <T> Endec<T> of(BiConsumer<Serializer<?>, T> encode, Function<Deserializer<?>, T> decode) {
+    static <T> Endec<T> of(TriConsumer<Serializer<?>, ExtraDataContext, T> encode, BiFunction<Deserializer<?>, ExtraDataContext, T> decode) {
         return new Endec<>() {
             @Override
-            public void encode(Serializer<?> serializer, T value) {
-                encode.accept(serializer, value);
+            public void encode(Serializer<?> serializer, ExtraDataContext ctx, T value) {
+                encode.accept(serializer, ctx, value);
             }
 
             @Override
-            public T decode(Deserializer<?> deserializer) {
-                return decode.apply(deserializer);
+            public T decode(Deserializer<?> deserializer, ExtraDataContext ctx) {
+                return decode.apply(deserializer, ctx);
             }
         };
     }
@@ -159,12 +163,12 @@ public interface Endec<T> {
      * using {@code valueEndec}
      */
     static <K, V> Endec<Map<K, V>> map(Function<K, String> keyToString, Function<String, K> stringToKey, Endec<V> valueEndec) {
-        return of((serializer, map) -> {
-            try (var mapState = serializer.map(valueEndec, map.size())) {
+        return of((serializer, ctx, map) -> {
+            try (var mapState = serializer.map(ctx, valueEndec, map.size())) {
                 map.forEach((k, v) -> mapState.entry(keyToString.apply(k), v));
             }
-        }, deserializer -> {
-            var mapState = deserializer.map(valueEndec);
+        }, (deserializer, ctx) -> {
+            var mapState = deserializer.map(ctx, valueEndec);
 
             var map = new HashMap<K, V>(mapState.estimatedSize());
             mapState.forEachRemaining(entry -> map.put(stringToKey.apply(entry.getKey()), entry.getValue()));
@@ -264,18 +268,18 @@ public interface Endec<T> {
     static <T, K> Endec<T> dispatchedStruct(Function<K, StructEndec<? extends T>> variantToEndec, Function<T, K> instanceToVariant, Endec<K> variantEndec, String variantKey) {
         return new StructEndec<>() {
             @Override
-            public void encodeStruct(Serializer<?> serializer, Serializer.Struct struct, T value) {
+            public void encodeStruct(Serializer<?> serializer, Serializer.Struct struct, ExtraDataContext ctx, T value) {
                 var variant = instanceToVariant.apply(value);
-                struct.field(variantKey, variantEndec, variant);
+                struct.field(ctx, variantKey, variantEndec, variant);
 
                 //noinspection unchecked
-                ((StructEndec<T>) variantToEndec.apply(variant)).encodeStruct(serializer, struct, value);
+                ((StructEndec<T>) variantToEndec.apply(variant)).encodeStruct(serializer, struct, ctx, value);
             }
 
             @Override
-            public T decodeStruct(Deserializer<?> deserializer, Deserializer.Struct struct) {
-                var variant = struct.field(variantKey, variantEndec);
-                return variantToEndec.apply(variant).decodeStruct(deserializer, struct);
+            public T decodeStruct(Deserializer<?> deserializer, Deserializer.Struct struct, ExtraDataContext ctx) {
+                var variant = struct.field(ctx, variantKey, variantEndec);
+                return variantToEndec.apply(variant).decodeStruct(deserializer, struct, ctx);
             }
         };
     }
@@ -290,46 +294,66 @@ public interface Endec<T> {
     static <T, K> Endec<T> dispatched(Function<K, Endec<? extends T>> variantToEndec, Function<T, K> instanceToVariant, Endec<K> variantEndec) {
         return new StructEndec<>() {
             @Override
-            public void encodeStruct(Serializer<?> serializer, Serializer.Struct struct, T value) {
+            public void encodeStruct(Serializer<?> serializer, Serializer.Struct struct, ExtraDataContext ctx, T value) {
                 var variant = instanceToVariant.apply(value);
-                struct.field("variant", variantEndec, variant);
+                struct.field(ctx, "variant", variantEndec, variant);
 
                 //noinspection unchecked
-                struct.field("instance", ((Endec<T>) variantToEndec.apply(variant)), value);
+                struct.field(ctx, "instance", ((Endec<T>) variantToEndec.apply(variant)), value);
             }
 
             @Override
-            public T decodeStruct(Deserializer<?> deserializer, Deserializer.Struct struct) {
-                var variant = struct.field("variant", variantEndec);
-                return struct.field("instance", variantToEndec.apply(variant));
+            public T decodeStruct(Deserializer<?> deserializer, Deserializer.Struct struct, ExtraDataContext ctx) {
+                var variant = struct.field(ctx, "variant", variantEndec);
+                return struct.field(ctx, "instance", variantToEndec.apply(variant));
             }
         };
     }
 
     // ---
 
-    static <T> EndecBranchedBuilder<T> ifToken(DataToken<?> attribute, Endec<T> endec) {
-        return EndecBranchedBuilder.of(attribute, endec);
+    static <T> StructEndecBranchBuilder<T> ifTokenStruct(DataToken<?> attribute, StructEndec<T> endec) {
+        return new StructEndecBranchBuilder<T>().orElseIf(attribute, endec);
     }
 
-    static <D, T, I> EndecBranchedBuilder<T> ifToken(DataToken<D> attribute, Endec<I> endec, BiFunction<D, T, I> to, BiFunction<D, I, T> from) {
-        return EndecBranchedBuilder.of(attribute, endec, to, from);
+    static <T> StructEndecBranchBuilder<T> ifTokenStruct(DataToken.Instanced<Boolean> attribute, StructEndec<T> endec) {
+        return new StructEndecBranchBuilder<T>().orElseIf(attribute, endec);
     }
 
-    default <D, R> Endec<R> ofToken(DataToken<D> attribute, BiFunction<D, T, R> to, BiFunction<D, R, T> from) {
-        return Endec.ofToken(attribute, (serializer, d, t) -> this.encode(serializer, from.apply(d, t)), (deserializer, d) -> to.apply(d, this.decode(deserializer)));
+    static <D, T, I> StructEndecBranchBuilder<T> ifTokenStruct(DataToken.Instanced<D> attribute, StructEndec<I> endec, BiFunction<D, I, T> to, BiFunction<D, T, I> from) {
+        return new StructEndecBranchBuilder<T>().orElseIf(attribute, endec, to, from);
     }
 
-    static <V, D> Endec<V> ofToken(DataToken<D> token, TriConsumer<Serializer<?>, D, V> encode, BiFunction<Deserializer<?>, D, V> decode){
+    static <T> EndecBranchBuilder<T> ifToken(DataToken<?> attribute, Endec<T> endec) {
+        return new EndecBranchBuilder<T>().orElseIf(attribute, endec);
+    }
+
+    static <T> EndecBranchBuilder<T> ifToken(DataToken.Instanced<Boolean> attribute, Endec<T> endec) {
+        return new EndecBranchBuilder<T>().orElseIf(attribute, endec);
+    }
+
+    static <D, T, I> EndecBranchBuilder<T> ifToken(DataToken.Instanced<D> attribute, Endec<I> endec, BiFunction<D, I, T> to, BiFunction<D, T, I> from) {
+        return new EndecBranchBuilder<T>().orElseIf(attribute, endec, to, from);
+    }
+
+    //--
+
+    default <D, R> Endec<R> ofToken(DataToken.Instanced<D> attribute, BiFunction<D, T, R> to, BiFunction<D, R, T> from) {
+        return Endec.ofToken(attribute,
+                (serializer, ctx, d, t) -> this.encode(serializer, ctx, from.apply(d, t)),
+                (deserializer, ctx, d) -> to.apply(d, this.decode(deserializer, ctx)));
+    }
+
+    static <V, D> Endec<V> ofToken(DataToken.Instanced<D> token, QuadConsumer<Serializer<?>, ExtraDataContext, D, V> encode, TriFunction<Deserializer<?>, ExtraDataContext, D, V> decode){
         return new Endec<>() {
             @Override
-            public void encode(Serializer<?> serializer, V value) {
-                encode.accept(serializer, serializer.getOrThrow(token), value);
+            public void encode(Serializer<?> serializer, ExtraDataContext ctx, V value) {
+                encode.accept(serializer, ctx, ctx.getOrThrow(token), value);
             }
 
             @Override
-            public V decode(Deserializer<?> deserializer) {
-                return decode.apply(deserializer, deserializer.getOrThrow(token));
+            public V decode(Deserializer<?> deserializer, ExtraDataContext ctx) {
+                return decode.apply(deserializer, ctx, ctx.getOrThrow(token));
             }
         };
     }
@@ -342,8 +366,8 @@ public interface Endec<T> {
      */
     default <R> Endec<R> xmap(Function<T, R> to, Function<R, T> from) {
         return of(
-                (serializer, value) -> Endec.this.encode(serializer, from.apply(value)),
-                deserializer -> to.apply(Endec.this.decode(deserializer))
+                (serializer, ctx, value) -> Endec.this.encode(serializer, ctx, from.apply(value)),
+                (deserializer, ctx) -> to.apply(Endec.this.decode(deserializer, ctx))
         );
     }
 
@@ -362,13 +386,13 @@ public interface Endec<T> {
     }
 
     /**
-     * Create a new endec which, if decoding using this endec's {@link #decode(Deserializer)} fails,
+     * Create a new endec which, if decoding using this endec's {@link #decode(Deserializer, ExtraDataContext)} fails,
      * instead tries to decode using {@code decodeOnError}
      */
     default Endec<T> catchErrors(BiFunction<Deserializer<?>, Exception, T> decodeOnError) {
-        return of(this::encode, deserializer -> {
+        return of(this::encode, (deserializer, ctx) -> {
             try {
-                return deserializer.tryRead(this::decode);
+                return deserializer.tryRead(this::decode, ctx);
             } catch (Exception e) {
                 return decodeOnError.apply(deserializer, e);
             }

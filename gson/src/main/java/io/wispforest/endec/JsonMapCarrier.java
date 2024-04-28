@@ -1,6 +1,7 @@
 package io.wispforest.endec;
 
 import com.google.gson.JsonObject;
+import io.wispforest.endec.data.ExtraDataContext;
 import io.wispforest.endec.format.json.JsonDeserializer;
 import io.wispforest.endec.format.json.JsonSerializer;
 import io.wispforest.endec.impl.KeyedEndec;
@@ -16,13 +17,13 @@ public class JsonMapCarrier implements MapCarrier {
     }
 
     @Override
-    public <T> T getWithErrors(@NotNull KeyedEndec<T> key) {
-        return this.object.has(key.key()) ? key.endec().decodeFully(JsonDeserializer::of, this.object.get(key.key())) : key.defaultValue();
+    public <T> T getWithErrors(@NotNull KeyedEndec<T> key, ExtraDataContext ctx) {
+        return this.object.has(key.key()) ? key.endec().decodeFully(JsonDeserializer::of, this.object.get(key.key()), ctx.instances()) : key.defaultValue();
     }
 
     @Override
-    public <T> void put(@NotNull KeyedEndec<T> key, @NotNull T value) {
-        this.object.add(key.key(), key.endec().encodeFully(JsonSerializer::of, value));
+    public <T> void put(@NotNull KeyedEndec<T> key, ExtraDataContext ctx, @NotNull T value) {
+        this.object.add(key.key(), key.endec().encodeFully(JsonSerializer::of, value, ctx.instances()));
     }
 
     @Override

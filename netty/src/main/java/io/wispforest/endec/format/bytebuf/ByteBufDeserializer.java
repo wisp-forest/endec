@@ -3,15 +3,15 @@ package io.wispforest.endec.format.bytebuf;
 import io.netty.buffer.ByteBuf;
 import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
-import io.wispforest.endec.ExtraDataDeserializer;
+import io.wispforest.endec.data.ExtraDataContext;
 import io.wispforest.endec.util.VarUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
-public class ByteBufDeserializer extends ExtraDataDeserializer<ByteBuf> {
+public class ByteBufDeserializer implements Deserializer<ByteBuf> {
 
     private final ByteBuf buffer;
 
@@ -26,57 +26,57 @@ public class ByteBufDeserializer extends ExtraDataDeserializer<ByteBuf> {
     // ---
 
     @Override
-    public byte readByte() {
+    public byte readByte(ExtraDataContext ctx) {
         return this.buffer.readByte();
     }
 
     @Override
-    public short readShort() {
+    public short readShort(ExtraDataContext ctx) {
         return this.buffer.readShort();
     }
 
     @Override
-    public int readInt() {
+    public int readInt(ExtraDataContext ctx) {
         return this.buffer.readInt();
     }
 
     @Override
-    public long readLong() {
+    public long readLong(ExtraDataContext ctx) {
         return this.buffer.readLong();
     }
 
     @Override
-    public float readFloat() {
+    public float readFloat(ExtraDataContext ctx) {
         return this.buffer.readFloat();
     }
 
     @Override
-    public double readDouble() {
+    public double readDouble(ExtraDataContext ctx) {
         return this.buffer.readDouble();
     }
 
     // ---
 
     @Override
-    public int readVarInt() {
-        return VarUtils.readInt(this::readByte);
+    public int readVarInt(ExtraDataContext ctx) {
+        return VarUtils.readInt(() -> readByte(ctx));
     }
 
     @Override
-    public long readVarLong() {
-        return VarUtils.readLong(this::readByte);
+    public long readVarLong(ExtraDataContext ctx) {
+        return VarUtils.readLong(() -> readByte(ctx));
     }
 
     // ---
 
     @Override
-    public boolean readBoolean() {
+    public boolean readBoolean(ExtraDataContext ctx) {
         return this.buffer.readBoolean();
     }
 
     @Override
-    public String readString() {
-        var sequenceLength = this.readVarInt();
+    public String readString(ExtraDataContext ctx) {
+        var sequenceLength = this.readVarInt(ctx);
 
         var string = this.buffer.toString(this.buffer.readerIndex(), sequenceLength, StandardCharsets.UTF_8);
 
@@ -86,28 +86,28 @@ public class ByteBufDeserializer extends ExtraDataDeserializer<ByteBuf> {
     }
 
     @Override
-    public byte[] readBytes() {
-        var array = new byte[this.readVarInt()];
+    public byte[] readBytes(ExtraDataContext ctx) {
+        var array = new byte[this.readVarInt(ctx)];
         this.buffer.readBytes(array);
 
         return array;
     }
 
     @Override
-    public <V> Optional<V> readOptional(Endec<V> endec) {
-        return this.readBoolean()
-                ? Optional.of(endec.decode(this))
+    public <V> Optional<V> readOptional(ExtraDataContext ctx, Endec<V> endec) {
+        return this.readBoolean(ctx)
+                ? Optional.of(endec.decode(this, ctx))
                 : Optional.empty();
     }
 
     // ---
 
     @Override
-    public <V> V tryRead(Function<Deserializer<ByteBuf>, V> reader) {
+    public <V> V tryRead(BiFunction<Deserializer<ByteBuf>, ExtraDataContext, V> reader, ExtraDataContext ctx) {
         var prevReaderIdx = this.buffer.readerIndex();
 
         try {
-            return reader.apply(this);
+            return reader.apply(this, ctx);
         } catch (Exception e) {
             this.buffer.readerIndex(prevReaderIdx);
             throw e;
@@ -117,18 +117,18 @@ public class ByteBufDeserializer extends ExtraDataDeserializer<ByteBuf> {
     // ---
 
     @Override
-    public <E> Deserializer.Sequence<E> sequence(Endec<E> elementEndec) {
-        return new Sequence<>(elementEndec, this.readVarInt());
+    public <E> Deserializer.Sequence<E> sequence(ExtraDataContext ctx, Endec<E> elementEndec) {
+        return new Sequence<>(elementEndec, this.readVarInt(ctx), ctx);
     }
 
     @Override
-    public <V> Deserializer.Map<V> map(Endec<V> valueEndec) {
-        return new Map<>(valueEndec, this.readVarInt());
+    public <V> Deserializer.Map<V> map(ExtraDataContext ctx, Endec<V> valueEndec) {
+        return new Map<>(valueEndec, this.readVarInt(ctx), ctx);
     }
 
     @Override
     public Struct struct() {
-        return new Sequence<>(null, 0);
+        return new Sequence<>(null, 0, ExtraDataContext.of());
     }
 
     // ---
@@ -138,11 +138,15 @@ public class ByteBufDeserializer extends ExtraDataDeserializer<ByteBuf> {
         private final Endec<V> valueEndec;
         private final int size;
 
+        private final ExtraDataContext ctx;
+
         private int index = 0;
 
-        private Sequence(Endec<V> valueEndec, int size) {
+        private Sequence(Endec<V> valueEndec, int size, ExtraDataContext ctx) {
             this.valueEndec = valueEndec;
             this.size = size;
+
+            this.ctx = ctx;
         }
 
         @Override
@@ -158,17 +162,17 @@ public class ByteBufDeserializer extends ExtraDataDeserializer<ByteBuf> {
         @Override
         public V next() {
             this.index++;
-            return this.valueEndec.decode(ByteBufDeserializer.this);
+            return this.valueEndec.decode(ByteBufDeserializer.this, ctx);
         }
 
         @Override
-        public <F> @Nullable F field(String name, Endec<F> endec) {
-            return this.field(name, endec, null);
+        public <F> @Nullable F field(ExtraDataContext ctx, String name, Endec<F> endec) {
+            return this.field(ctx, name, endec, null);
         }
 
         @Override
-        public <F> @Nullable F field(String name, Endec<F> endec, @Nullable F defaultValue) {
-            return endec.decode(ByteBufDeserializer.this);
+        public <F> @Nullable F field(ExtraDataContext ctx, String name, Endec<F> endec, @Nullable F defaultValue) {
+            return endec.decode(ByteBufDeserializer.this, ctx);
         }
     }
 
@@ -177,11 +181,15 @@ public class ByteBufDeserializer extends ExtraDataDeserializer<ByteBuf> {
         private final Endec<V> valueEndec;
         private final int size;
 
+        private final ExtraDataContext ctx;
+
         private int index = 0;
 
-        private Map(Endec<V> valueEndec, int size) {
+        private Map(Endec<V> valueEndec, int size, ExtraDataContext ctx) {
             this.valueEndec = valueEndec;
             this.size = size;
+
+            this.ctx = ctx;
         }
 
         @Override
@@ -198,8 +206,8 @@ public class ByteBufDeserializer extends ExtraDataDeserializer<ByteBuf> {
         public java.util.Map.Entry<String, V> next() {
             this.index++;
             return java.util.Map.entry(
-                    ByteBufDeserializer.this.readString(),
-                    this.valueEndec.decode(ByteBufDeserializer.this)
+                    ByteBufDeserializer.this.readString(ctx),
+                    this.valueEndec.decode(ByteBufDeserializer.this, ctx)
             );
         }
     }

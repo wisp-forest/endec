@@ -1,7 +1,6 @@
 package io.wispforest.endec.util;
 
-import io.wispforest.endec.data.DataToken;
-import io.wispforest.endec.ExtraDataSerializer;
+import io.wispforest.endec.Serializer;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -15,13 +14,12 @@ import java.util.function.Consumer;
  * {@link io.wispforest.owo.serialization.format.json.JsonSerializer} for some reference
  * implementations
  */
-public abstract class RecursiveSerializer<T> extends ExtraDataSerializer<T> {
+public abstract class RecursiveSerializer<T> implements Serializer<T> {
 
     protected final Deque<Frame<T>> frames = new ArrayDeque<>();
     protected T result;
 
-    protected RecursiveSerializer(T initialResult, DataToken.Instance ...instances) {
-        super(instances);
+    protected RecursiveSerializer(T initialResult) {
         this.result = initialResult;
         this.frames.push(new Frame<>(t -> this.result = t, false));
     }
