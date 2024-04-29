@@ -4,7 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.Serializer;
-import io.wispforest.endec.data.ExtraDataContext;
+import io.wispforest.endec.data.SerializationContext;
 import io.wispforest.endec.util.VarUtils;
 
 import java.util.Optional;
@@ -24,89 +24,89 @@ public class ByteBufSerializer<B extends ByteBuf> implements Serializer<B> {
     // ---
 
     @Override
-    public void writeByte(ExtraDataContext ctx, byte value) {
+    public void writeByte(SerializationContext ctx, byte value) {
         this.buffer.writeByte(value);
     }
 
     @Override
-    public void writeShort(ExtraDataContext ctx, short value) {
+    public void writeShort(SerializationContext ctx, short value) {
         this.buffer.writeShort(value);
     }
 
     @Override
-    public void writeInt(ExtraDataContext ctx, int value) {
+    public void writeInt(SerializationContext ctx, int value) {
         this.buffer.writeInt(value);
     }
 
     @Override
-    public void writeLong(ExtraDataContext ctx, long value) {
+    public void writeLong(SerializationContext ctx, long value) {
         this.buffer.writeLong(value);
     }
 
     @Override
-    public void writeFloat(ExtraDataContext ctx, float value) {
+    public void writeFloat(SerializationContext ctx, float value) {
         this.buffer.writeFloat(value);
     }
 
     @Override
-    public void writeDouble(ExtraDataContext ctx, double value) {
+    public void writeDouble(SerializationContext ctx, double value) {
         this.buffer.writeDouble(value);
     }
 
     // ---
 
     @Override
-    public void writeVarInt(ExtraDataContext ctx, int value) {
+    public void writeVarInt(SerializationContext ctx, int value) {
         VarUtils.writeInt(value, value1 -> writeByte(ctx, value1));
     }
 
     @Override
-    public void writeVarLong(ExtraDataContext ctx, long value) {
+    public void writeVarLong(SerializationContext ctx, long value) {
         VarUtils.writeLong(value, value1 -> writeByte(ctx, value1));
     }
 
     // ---
 
     @Override
-    public void writeBoolean(ExtraDataContext ctx, boolean value) {
+    public void writeBoolean(SerializationContext ctx, boolean value) {
         this.buffer.writeBoolean(value);
     }
 
     @Override
-    public void writeString(ExtraDataContext ctx, String value) {
+    public void writeString(SerializationContext ctx, String value) {
         this.writeVarInt(ctx, value.length());
         ByteBufUtil.writeUtf8(this.buffer, value);
     }
 
     @Override
-    public void writeBytes(ExtraDataContext ctx, byte[] bytes) {
+    public void writeBytes(SerializationContext ctx, byte[] bytes) {
         this.writeVarInt(ctx, bytes.length);
         this.buffer.writeBytes(bytes);
     }
 
     @Override
-    public <V> void writeOptional(ExtraDataContext ctx, Endec<V> endec, Optional<V> optional) {
+    public <V> void writeOptional(SerializationContext ctx, Endec<V> endec, Optional<V> optional) {
         this.writeBoolean(ctx, optional.isPresent());
-        optional.ifPresent(value -> endec.encode(this, ctx, value));
+        optional.ifPresent(value -> endec.encode(ctx, this, value));
     }
 
     // ---
 
     @Override
-    public <V> Map<V> map(ExtraDataContext ctx, Endec<V> valueEndec, int size) {
+    public <V> Map<V> map(SerializationContext ctx, Endec<V> valueEndec, int size) {
         this.writeVarInt(ctx, size);
         return new Sequence<>(valueEndec, ctx);
     }
 
     @Override
-    public <E> Serializer.Sequence<E> sequence(ExtraDataContext ctx, Endec<E> elementEndec, int size) {
+    public <E> Serializer.Sequence<E> sequence(SerializationContext ctx, Endec<E> elementEndec, int size) {
         this.writeVarInt(ctx, size);
         return new Sequence<>(elementEndec, ctx);
     }
 
     @Override
     public Struct struct() {
-        return new Sequence<>(null, ExtraDataContext.of());
+        return new Sequence<>(null, SerializationContext.of());
     }
 
     // ---
@@ -121,27 +121,27 @@ public class ByteBufSerializer<B extends ByteBuf> implements Serializer<B> {
     private class Sequence<V> implements Serializer.Sequence<V>, Struct, Map<V> {
 
         private final Endec<V> valueEndec;
-        private final ExtraDataContext ctx;
+        private final SerializationContext ctx;
 
-        private Sequence(Endec<V> valueEndec, ExtraDataContext ctx) {
+        private Sequence(Endec<V> valueEndec, SerializationContext ctx) {
             this.valueEndec = valueEndec;
             this.ctx = ctx;
         }
 
         @Override
         public void element(V element) {
-            this.valueEndec.encode(ByteBufSerializer.this, ctx, element);
+            this.valueEndec.encode(ctx, ByteBufSerializer.this, element);
         }
 
         @Override
         public void entry(String key, V value) {
             ByteBufSerializer.this.writeString(ctx, key);
-            this.valueEndec.encode(ByteBufSerializer.this, ctx, value);
+            this.valueEndec.encode(ctx, ByteBufSerializer.this, value);
         }
 
         @Override
-        public <F> Struct field(ExtraDataContext ctx, String name, Endec<F> endec, F value) {
-            endec.encode(ByteBufSerializer.this, ctx, value);
+        public <F> Struct field(SerializationContext ctx, String name, Endec<F> endec, F value) {
+            endec.encode(ctx, ByteBufSerializer.this, value);
             return this;
         }
 

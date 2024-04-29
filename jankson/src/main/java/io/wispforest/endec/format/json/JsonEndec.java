@@ -4,8 +4,7 @@ import blue.endless.jankson.Jankson;
 import blue.endless.jankson.JsonElement;
 import blue.endless.jankson.api.SyntaxError;
 import io.wispforest.endec.*;
-import io.wispforest.endec.data.DataTokens;
-import io.wispforest.endec.data.ExtraDataContext;
+import io.wispforest.endec.data.SerializationContext;
 
 public final class JsonEndec implements Endec<JsonElement> {
 
@@ -16,9 +15,9 @@ public final class JsonEndec implements Endec<JsonElement> {
     private JsonEndec() {}
 
     @Override
-    public void encode(Serializer<?> serializer, ExtraDataContext ctx, JsonElement value) {
+    public void encode(SerializationContext ctx, Serializer<?> serializer, JsonElement value) {
         if (serializer instanceof SelfDescribedSerializer<?>) {
-            JsonDeserializer.of(value).readAny(serializer, ctx);
+            JsonDeserializer.of(value).readAny(ctx, serializer);
             return;
         }
 
@@ -26,10 +25,10 @@ public final class JsonEndec implements Endec<JsonElement> {
     }
 
     @Override
-    public JsonElement decode(Deserializer<?> deserializer, ExtraDataContext ctx) {
+    public JsonElement decode(SerializationContext ctx, Deserializer<?> deserializer) {
         if (deserializer instanceof SelfDescribedDeserializer<?> selfDescribedDeserializer) {
             var json = JsonSerializer.of();
-            selfDescribedDeserializer.readAny(json, ctx);
+            selfDescribedDeserializer.readAny(ctx, json);
 
             return json.result();
         }

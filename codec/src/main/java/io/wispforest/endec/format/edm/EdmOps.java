@@ -1,13 +1,11 @@
 package io.wispforest.endec.format.edm;
 
-import com.google.common.collect.ImmutableMap;
 import com.mojang.datafixers.DataFixUtils;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
-import io.wispforest.endec.data.DataToken;
-import io.wispforest.endec.data.ExtraDataContext;
-import org.jetbrains.annotations.Nullable;
+import io.wispforest.endec.data.SerializationContext;
+import io.wispforest.endec.util.SerializationContextSupplier;
 
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -15,34 +13,23 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @SuppressWarnings("unchecked")
-public class EdmOps implements DynamicOps<EdmElement<?>>, ExtraDataContext {
+public class EdmOps implements DynamicOps<EdmElement<?>>, SerializationContextSupplier {
 
-    public static final EdmOps INSTANCE = new EdmOps(Map.of());
+    public static final EdmOps INSTANCE = new EdmOps(SerializationContext.of());
 
-    private final java.util.Map<DataToken<?>, Object> contextData;
+    private final SerializationContext context;
 
-    private EdmOps(java.util.Map<DataToken<?>, Object> contextData) {
-        this.contextData = ImmutableMap.copyOf(contextData);
+    private EdmOps(SerializationContext context) {
+        this.context = context;
     }
 
-    public static EdmOps create(ExtraDataContext context) {
-        return new EdmOps(context.tokens());
-    }
-
-    @Override
-    public java.util.Map<DataToken<?>, Object> tokens() {
-        return this.contextData;
+    public static EdmOps create(SerializationContext context) {
+        return new EdmOps(context.with());
     }
 
     @Override
-    @Nullable
-    public <DATA_TYPE> DATA_TYPE get(DataToken<DATA_TYPE> token) {
-        return (DATA_TYPE) this.contextData.get(token);
-    }
-
-    @Override
-    public <DATA_TYPE> boolean has(DataToken<DATA_TYPE> token) {
-        return this.contextData.containsKey(token);
+    public SerializationContext getContext() {
+        return context;
     }
 
     // --- Serialization ---

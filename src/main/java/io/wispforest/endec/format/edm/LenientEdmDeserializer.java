@@ -1,7 +1,7 @@
 package io.wispforest.endec.format.edm;
 
 import io.wispforest.endec.Endec;
-import io.wispforest.endec.data.ExtraDataContext;
+import io.wispforest.endec.data.SerializationContext;
 
 import java.util.Optional;
 
@@ -18,41 +18,41 @@ public class LenientEdmDeserializer extends EdmDeserializer {
     // ---
 
     @Override
-    public byte readByte(ExtraDataContext ctx) {
+    public byte readByte(SerializationContext ctx) {
         return this.getValue().<Number>cast().byteValue();
     }
 
     @Override
-    public short readShort(ExtraDataContext ctx) {
+    public short readShort(SerializationContext ctx) {
         return this.getValue().<Number>cast().shortValue();
     }
 
     @Override
-    public int readInt(ExtraDataContext ctx) {
+    public int readInt(SerializationContext ctx) {
         return this.getValue().<Number>cast().intValue();
     }
 
     @Override
-    public long readLong(ExtraDataContext ctx) {
+    public long readLong(SerializationContext ctx) {
         return this.getValue().<Number>cast().longValue();
     }
 
     // ---
 
     @Override
-    public float readFloat(ExtraDataContext ctx) {
+    public float readFloat(SerializationContext ctx) {
         return this.getValue().<Number>cast().floatValue();
     }
 
     @Override
-    public double readDouble(ExtraDataContext ctx) {
+    public double readDouble(SerializationContext ctx) {
         return this.getValue().<Number>cast().doubleValue();
     }
 
     // ---
 
     @Override
-    public boolean readBoolean(ExtraDataContext ctx) {
+    public boolean readBoolean(SerializationContext ctx) {
         if(this.getValue().value() instanceof Number number){
             return number.byteValue() == 1;
         }
@@ -62,7 +62,7 @@ public class LenientEdmDeserializer extends EdmDeserializer {
 
 
     @Override
-    public <V> Optional<V> readOptional(ExtraDataContext ctx, Endec<V> endec) {
+    public <V> Optional<V> readOptional(SerializationContext ctx, Endec<V> endec) {
         var edmElement = this.getValue();
 
         if(edmElement == null){
@@ -70,7 +70,7 @@ public class LenientEdmDeserializer extends EdmDeserializer {
         } else if(edmElement.value() instanceof Optional<?>){
             return super.readOptional(ctx, endec);
         } else {
-            return Optional.of(endec.decode(this, ctx));
+            return Optional.of(endec.decode(ctx, this));
         }
     }
 }

@@ -1,7 +1,7 @@
 package io.wispforest.endec.format.forwarding;
 
 import io.wispforest.endec.*;
-import io.wispforest.endec.data.ExtraDataContext;
+import io.wispforest.endec.data.SerializationContext;
 
 import java.util.Optional;
 
@@ -20,72 +20,72 @@ public class ForwardingSerializer<T> implements Serializer<T> {
     //--
 
     @Override
-    public void writeByte(ExtraDataContext ctx, byte value) {
+    public void writeByte(SerializationContext ctx, byte value) {
         this.delegate.writeByte(ctx, value);
     }
 
     @Override
-    public void writeShort(ExtraDataContext ctx, short value) {
+    public void writeShort(SerializationContext ctx, short value) {
         this.delegate.writeShort(ctx, value);
     }
 
     @Override
-    public void writeInt(ExtraDataContext ctx, int value) {
+    public void writeInt(SerializationContext ctx, int value) {
         this.delegate.writeInt(ctx, value);
     }
 
     @Override
-    public void writeLong(ExtraDataContext ctx, long value) {
+    public void writeLong(SerializationContext ctx, long value) {
         this.delegate.writeLong(ctx, value);
     }
 
     @Override
-    public void writeFloat(ExtraDataContext ctx, float value) {
+    public void writeFloat(SerializationContext ctx, float value) {
         this.delegate.writeFloat(ctx, value);
     }
 
     @Override
-    public void writeDouble(ExtraDataContext ctx, double value) {
+    public void writeDouble(SerializationContext ctx, double value) {
         this.delegate.writeDouble(ctx, value);
     }
 
     @Override
-    public void writeVarInt(ExtraDataContext ctx, int value) {
+    public void writeVarInt(SerializationContext ctx, int value) {
         this.delegate.writeVarInt(ctx, value);
     }
 
     @Override
-    public void writeVarLong(ExtraDataContext ctx, long value) {
+    public void writeVarLong(SerializationContext ctx, long value) {
         this.delegate.writeVarLong(ctx, value);
     }
 
     @Override
-    public void writeBoolean(ExtraDataContext ctx, boolean value) {
+    public void writeBoolean(SerializationContext ctx, boolean value) {
         this.delegate.writeBoolean(ctx, value);
     }
 
     @Override
-    public void writeString(ExtraDataContext ctx, String value) {
+    public void writeString(SerializationContext ctx, String value) {
         this.delegate.writeString(ctx, value);
     }
 
     @Override
-    public void writeBytes(ExtraDataContext ctx, byte[] bytes) {
+    public void writeBytes(SerializationContext ctx, byte[] bytes) {
         this.delegate.writeBytes(ctx, bytes);
     }
 
     @Override
-    public <V> void writeOptional(ExtraDataContext ctx, Endec<V> endec, Optional<V> optional) {
+    public <V> void writeOptional(SerializationContext ctx, Endec<V> endec, Optional<V> optional) {
         this.delegate.writeOptional(ctx, endec, optional);
     }
 
     @Override
-    public <E> Sequence<E> sequence(ExtraDataContext ctx, Endec<E> elementEndec, int size) {
+    public <E> Sequence<E> sequence(SerializationContext ctx, Endec<E> elementEndec, int size) {
         return this.delegate.sequence(ctx, elementEndec, size);
     }
 
     @Override
-    public <V> Map<V> map(ExtraDataContext ctx, Endec<V> valueEndec, int size) {
+    public <V> Map<V> map(SerializationContext ctx, Endec<V> valueEndec, int size) {
         return this.delegate.map(ctx, valueEndec, size);
     }
 

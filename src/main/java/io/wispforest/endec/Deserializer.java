@@ -1,38 +1,38 @@
 package io.wispforest.endec;
 
-import io.wispforest.endec.data.ExtraDataContext;
+import io.wispforest.endec.data.SerializationContext;
+import io.wispforest.endec.util.Decoder;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.Optional;
-import java.util.function.BiFunction;
 
 public interface Deserializer<T> {
 
-    default ExtraDataContext initalContext(ExtraDataContext ctx) {
+    default SerializationContext setupContext(SerializationContext ctx) {
         return ctx;
     }
 
-    byte readByte(ExtraDataContext ctx);
-    short readShort(ExtraDataContext ctx);
-    int readInt(ExtraDataContext ctx);
-    long readLong(ExtraDataContext ctx);
-    float readFloat(ExtraDataContext ctx);
-    double readDouble(ExtraDataContext ctx);
+    byte readByte(SerializationContext ctx);
+    short readShort(SerializationContext ctx);
+    int readInt(SerializationContext ctx);
+    long readLong(SerializationContext ctx);
+    float readFloat(SerializationContext ctx);
+    double readDouble(SerializationContext ctx);
 
-    int readVarInt(ExtraDataContext ctx);
-    long readVarLong(ExtraDataContext ctx);
+    int readVarInt(SerializationContext ctx);
+    long readVarLong(SerializationContext ctx);
 
-    boolean readBoolean(ExtraDataContext ctx);
-    String readString(ExtraDataContext ctx);
-    byte[] readBytes(ExtraDataContext ctx);
-    <V> Optional<V> readOptional(ExtraDataContext ctx, Endec<V> endec);
+    boolean readBoolean(SerializationContext ctx);
+    String readString(SerializationContext ctx);
+    byte[] readBytes(SerializationContext ctx);
+    <V> Optional<V> readOptional(SerializationContext ctx, Endec<V> endec);
 
-    <E> Sequence<E> sequence(ExtraDataContext ctx, Endec<E> elementEndec);
-    <V> Map<V> map(ExtraDataContext ctx, Endec<V> valueEndec);
+    <E> Sequence<E> sequence(SerializationContext ctx, Endec<E> elementEndec);
+    <V> Map<V> map(SerializationContext ctx, Endec<V> valueEndec);
     Struct struct();
 
-    <V> V tryRead(BiFunction<Deserializer<T>, ExtraDataContext, V> reader, ExtraDataContext ctx);
+    <V> V tryRead(SerializationContext ctx, Decoder<V> reader);
 
     interface Sequence<E> extends Iterator<E> {
 
@@ -61,12 +61,12 @@ public interface Deserializer<T> {
          * Decode the value of field {@code name} using {@code endec}. If no
          * such field exists in the serialized data, an exception is thrown
          */
-        <F> @Nullable F field(ExtraDataContext ctx, String name, Endec<F> endec);
+        <F> @Nullable F field(SerializationContext ctx, String name, Endec<F> endec);
 
         /**
          * Decode the value of field {@code name} using {@code endec}. If no
          * such field exists in the serialized data, {@code defaultValue} is returned
          */
-        <F> @Nullable F field(ExtraDataContext ctx, String name, Endec<F> endec, @Nullable F defaultValue);
+        <F> @Nullable F field(SerializationContext ctx, String name, Endec<F> endec, @Nullable F defaultValue);
     }
 }

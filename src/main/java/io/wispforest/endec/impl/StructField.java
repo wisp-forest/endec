@@ -5,7 +5,7 @@ import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.Serializer;
 import io.wispforest.endec.StructEndec;
-import io.wispforest.endec.data.ExtraDataContext;
+import io.wispforest.endec.data.SerializationContext;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
@@ -33,11 +33,11 @@ public sealed class StructField<S, F> permits StructField.Flat {
         this(name, endec, getter, (Supplier<F>) null);
     }
 
-    public void encodeField(Serializer<?> serializer, Serializer.Struct struct, ExtraDataContext ctx, S instance) {
+    public void encodeField(Serializer<?> serializer, Serializer.Struct struct, SerializationContext ctx, S instance) {
         struct.field(ctx, this.name, this.endec, this.getter.apply(instance));
     }
 
-    public F decodeField(Deserializer<?> deserializer, Deserializer.Struct struct, ExtraDataContext ctx) {
+    public F decodeField(Deserializer<?> deserializer, Deserializer.Struct struct, SerializationContext ctx) {
         return this.defaultValueFactory != null
                 ? struct.field(ctx, this.name, this.endec, this.defaultValueFactory.get())
                 : struct.field(ctx, this.name, this.endec);
@@ -54,13 +54,13 @@ public sealed class StructField<S, F> permits StructField.Flat {
         }
 
         @Override
-        public void encodeField(Serializer<?> serializer, Serializer.Struct struct, ExtraDataContext ctx, S instance) {
-            this.endec().encodeStruct(serializer, struct, ctx, this.getter.apply(instance));
+        public void encodeField(Serializer<?> serializer, Serializer.Struct struct, SerializationContext ctx, S instance) {
+            this.endec().encodeStruct(ctx, serializer, struct, this.getter.apply(instance));
         }
 
         @Override
-        public F decodeField(Deserializer<?> deserializer, Deserializer.Struct struct, ExtraDataContext ctx) {
-            return this.endec().decodeStruct(deserializer, struct, ctx);
+        public F decodeField(Deserializer<?> deserializer, Deserializer.Struct struct, SerializationContext ctx) {
+            return this.endec().decodeStruct(ctx, deserializer, struct);
         }
     }
 }

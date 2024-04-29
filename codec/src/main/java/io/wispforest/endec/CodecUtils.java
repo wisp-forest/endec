@@ -5,9 +5,10 @@ import com.mojang.datafixers.util.Either;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.*;
 import io.wispforest.endec.data.DataToken;
-import io.wispforest.endec.data.ExtraDataContext;
+import io.wispforest.endec.data.SerializationContext;
 import io.wispforest.endec.format.edm.*;
 import io.wispforest.endec.impl.EitherEndec;
+import io.wispforest.endec.util.SerializationContextSupplier;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -36,11 +37,11 @@ public class CodecUtils {
      */
     public static <T> Endec<T> ofCodec(Codec<T> codec) {
         return Endec.of(
-                (serializer, ctx, value) -> {
-                    EdmEndec.INSTANCE.encode(serializer, ctx, getResult(codec.encodeStart(EdmOps.create(ctx), value), IllegalStateException::new));
+                (ctx, serializer, value) -> {
+                    EdmEndec.INSTANCE.encode(ctx, serializer, getResult(codec.encodeStart(EdmOps.create(ctx), value), IllegalStateException::new));
                 },
-                (deserializer, ctx) -> {
-                    return getResult(codec.parse(EdmOps.create(ctx), EdmEndec.INSTANCE.decode(deserializer, ctx)), IllegalStateException::new);
+                (ctx, deserializer) -> {
+                    return getResult(codec.parse(EdmOps.create(ctx), EdmEndec.INSTANCE.decode(ctx, deserializer)), IllegalStateException::new);
                 }
         );
     }
@@ -63,11 +64,11 @@ public class CodecUtils {
                 try {
                     var dataStream = Arrays.stream(assumedTokens);
 
-                    if(ops instanceof ExtraDataContext context){
-                        dataStream = Streams.concat(dataStream, DataToken.streamedData(context.tokens()));
+                    if(ops instanceof SerializationContextSupplier supplier){
+                        dataStream = Streams.concat(dataStream, DataToken.streamedData(supplier.getContext().tokens()));
                     }
 
-                    return DataResult.success(new Pair<>(endec.decode(LenientEdmDeserializer.of(ops.convertTo(EdmOps.INSTANCE, input)), ExtraDataContext.of(dataStream.toArray(DataToken.Instance[]::new))), input));
+                    return DataResult.success(new Pair<>(endec.decode(SerializationContext.of(dataStream.toArray(DataToken.Instance[]::new)), LenientEdmDeserializer.of(ops.convertTo(EdmOps.INSTANCE, input))), input));
                 } catch (Exception e) {
                     return DataResult.error(e::getMessage);
                 }
@@ -78,11 +79,11 @@ public class CodecUtils {
                 try {
                     var dataStream = Arrays.stream(assumedTokens);
 
-                    if(ops instanceof ExtraDataContext context){
-                        dataStream = Streams.concat(dataStream, DataToken.streamedData(context.tokens()));
+                    if(ops instanceof SerializationContextSupplier supplier){
+                        dataStream = Streams.concat(dataStream, DataToken.streamedData(supplier.getContext().tokens()));
                     }
 
-                    var result = endec.encodeFully(EdmSerializer::of, input, dataStream.toArray(DataToken.Instance[]::new));
+                    var result = endec.encodeFully(SerializationContext.of(dataStream.toArray(DataToken.Instance[]::new)), EdmSerializer::of, input);
 
                     return DataResult.success(EdmOps.INSTANCE.convertTo(ops, result));
                 } catch (Exception e) {
@@ -115,11 +116,11 @@ public class CodecUtils {
 
                     var dataStream = Arrays.stream(assumedTokens);
 
-                    if(ops instanceof ExtraDataContext context){
-                        dataStream = Streams.concat(dataStream, DataToken.streamedData(context.tokens()));
+                    if(ops instanceof SerializationContextSupplier supplier){
+                        dataStream = Streams.concat(dataStream, DataToken.streamedData(supplier.getContext().tokens()));
                     }
 
-                    return DataResult.success(structEndec.decodeFully(LenientEdmDeserializer::of, EdmElement.wrapMap(map), dataStream.toArray(DataToken.Instance[]::new)));
+                    return DataResult.success(structEndec.decodeFully(SerializationContext.of(dataStream.toArray(DataToken.Instance[]::new)), LenientEdmDeserializer::of, EdmElement.wrapMap(map)));
                 } catch (Exception e) {
                     return DataResult.error(e::getMessage);
                 }
@@ -130,11 +131,11 @@ public class CodecUtils {
                 try {
                     var dataStream = Arrays.stream(assumedTokens);
 
-                    if(ops instanceof ExtraDataContext context){
-                        dataStream = Streams.concat(dataStream, DataToken.streamedData(context.tokens()));
+                    if(ops instanceof SerializationContextSupplier supplier){
+                        dataStream = Streams.concat(dataStream, DataToken.streamedData(supplier.getContext().tokens()));
                     }
 
-                    var element = structEndec.encodeFully(EdmSerializer::of, input, dataStream.toArray(DataToken.Instance[]::new)).<Map<String, EdmElement<?>>>cast();
+                    var element = structEndec.encodeFully(SerializationContext.of(dataStream.toArray(DataToken.Instance[]::new)), EdmSerializer::of, input).<Map<String, EdmElement<?>>>cast();
 
                     var result = prefix;
                     for (var entry : element.entrySet()) {

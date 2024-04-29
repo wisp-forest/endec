@@ -1,8 +1,7 @@
 package io.wispforest.endec.format.edm;
 
 import io.wispforest.endec.*;
-import io.wispforest.endec.data.DataTokens;
-import io.wispforest.endec.data.ExtraDataContext;
+import io.wispforest.endec.data.SerializationContext;
 import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
@@ -21,73 +20,73 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
     // ---
 
     @Override
-    public byte readByte(ExtraDataContext ctx) {
+    public byte readByte(SerializationContext ctx) {
         return this.getValue().cast();
     }
 
     @Override
-    public short readShort(ExtraDataContext ctx) {
+    public short readShort(SerializationContext ctx) {
         return this.getValue().cast();
     }
 
     @Override
-    public int readInt(ExtraDataContext ctx) {
+    public int readInt(SerializationContext ctx) {
         return this.getValue().cast();
     }
 
     @Override
-    public long readLong(ExtraDataContext ctx) {
-        return this.getValue().cast();
-    }
-
-    // ---
-
-    @Override
-    public float readFloat(ExtraDataContext ctx) {
-        return this.getValue().cast();
-    }
-
-    @Override
-    public double readDouble(ExtraDataContext ctx) {
+    public long readLong(SerializationContext ctx) {
         return this.getValue().cast();
     }
 
     // ---
 
     @Override
-    public int readVarInt(ExtraDataContext ctx) {
+    public float readFloat(SerializationContext ctx) {
+        return this.getValue().cast();
+    }
+
+    @Override
+    public double readDouble(SerializationContext ctx) {
+        return this.getValue().cast();
+    }
+
+    // ---
+
+    @Override
+    public int readVarInt(SerializationContext ctx) {
         return this.readInt(ctx);
     }
 
     @Override
-    public long readVarLong(ExtraDataContext ctx) {
+    public long readVarLong(SerializationContext ctx) {
         return this.readLong(ctx);
     }
 
     // ---
 
     @Override
-    public boolean readBoolean(ExtraDataContext ctx) {
+    public boolean readBoolean(SerializationContext ctx) {
         return this.getValue().cast();
     }
 
     @Override
-    public String readString(ExtraDataContext ctx) {
+    public String readString(SerializationContext ctx) {
         return this.getValue().cast();
     }
 
     @Override
-    public byte[] readBytes(ExtraDataContext ctx) {
+    public byte[] readBytes(SerializationContext ctx) {
         return this.getValue().cast();
     }
 
     @Override
-    public <V> Optional<V> readOptional(ExtraDataContext ctx, Endec<V> endec) {
+    public <V> Optional<V> readOptional(SerializationContext ctx, Endec<V> endec) {
         var optional = this.getValue().<Optional<EdmElement<?>>>cast();
         if (optional.isPresent()) {
             return this.frame(
                     optional::get,
-                    () -> Optional.of(endec.decode(this, ctx)),
+                    () -> Optional.of(endec.decode(ctx, this)),
                     false
             );
         } else {
@@ -98,12 +97,12 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
     // ---
 
     @Override
-    public <E> Deserializer.Sequence<E> sequence(ExtraDataContext ctx, Endec<E> elementEndec) {
+    public <E> Deserializer.Sequence<E> sequence(SerializationContext ctx, Endec<E> elementEndec) {
         return new Sequence<>(elementEndec, this.getValue().cast(), ctx);
     }
 
     @Override
-    public <V> Deserializer.Map<V> map(ExtraDataContext ctx, Endec<V> valueEndec) {
+    public <V> Deserializer.Map<V> map(SerializationContext ctx, Endec<V> valueEndec) {
         return new Map<>(valueEndec, this.getValue().cast(), ctx);
     }
 
@@ -115,11 +114,11 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
     // ---
 
     @Override
-    public <S> void readAny(Serializer<S> visitor, ExtraDataContext ctx) {
-        this.visit(visitor, ctx, this.getValue());
+    public <S> void readAny(SerializationContext ctx, Serializer<S> visitor) {
+        this.visit(ctx, visitor, this.getValue());
     }
 
-    private <S> void visit(Serializer<S> visitor, ExtraDataContext ctx, EdmElement<?> value) {
+    private <S> void visit(SerializationContext ctx, Serializer<S> visitor, EdmElement<?> value) {
         switch (value.type()) {
             case BYTE -> visitor.writeByte(ctx, value.cast());
             case SHORT -> visitor.writeShort(ctx, value.cast());
@@ -150,12 +149,12 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
     private class Sequence<V> implements Deserializer.Sequence<V> {
 
         private final Endec<V> valueEndec;
-        private final ExtraDataContext ctx;
+        private final SerializationContext ctx;
 
         private final Iterator<EdmElement<?>> elements;
         private final int size;
 
-        private Sequence(Endec<V> valueEndec, List<EdmElement<?>> elements, ExtraDataContext ctx) {
+        private Sequence(Endec<V> valueEndec, List<EdmElement<?>> elements, SerializationContext ctx) {
             this.valueEndec = valueEndec;
             this.ctx = ctx;
 
@@ -177,7 +176,7 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
         public V next() {
             return EdmDeserializer.this.frame(
                     this.elements::next,
-                    () -> this.valueEndec.decode(EdmDeserializer.this, ctx),
+                    () -> this.valueEndec.decode(ctx, EdmDeserializer.this),
                     false
             );
         }
@@ -186,12 +185,12 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
     private class Map<V> implements Deserializer.Map<V> {
 
         private final Endec<V> valueEndec;
-        private final ExtraDataContext ctx;
+        private final SerializationContext ctx;
 
         private final Iterator<java.util.Map.Entry<String, EdmElement<?>>> entries;
         private final int size;
 
-        private Map(Endec<V> valueEndec, java.util.Map<String, EdmElement<?>> entries, ExtraDataContext ctx) {
+        private Map(Endec<V> valueEndec, java.util.Map<String, EdmElement<?>> entries, SerializationContext ctx) {
             this.valueEndec = valueEndec;
             this.ctx = ctx;
 
@@ -214,7 +213,7 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
             var entry = entries.next();
             return EdmDeserializer.this.frame(
                     entry::getValue,
-                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(EdmDeserializer.this, ctx)),
+                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(ctx, EdmDeserializer.this)),
                     false
             );
         }
@@ -229,23 +228,23 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
         }
 
         @Override
-        public <F> @Nullable F field(ExtraDataContext ctx, String name, Endec<F> endec) {
+        public <F> @Nullable F field(SerializationContext ctx, String name, Endec<F> endec) {
             if (!this.map.containsKey(name)) {
                 throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
             }
             return EdmDeserializer.this.frame(
                     () -> this.map.get(name),
-                    () -> endec.decode(EdmDeserializer.this, ctx),
+                    () -> endec.decode(ctx, EdmDeserializer.this),
                     true
             );
         }
 
         @Override
-        public <F> @Nullable F field(ExtraDataContext ctx, String name, Endec<F> endec, @Nullable F defaultValue) {
+        public <F> @Nullable F field(SerializationContext ctx, String name, Endec<F> endec, @Nullable F defaultValue) {
             if (!this.map.containsKey(name)) return defaultValue;
             return EdmDeserializer.this.frame(
                     () -> this.map.get(name),
-                    () -> endec.decode(EdmDeserializer.this, ctx),
+                    () -> endec.decode(ctx, EdmDeserializer.this),
                     true
             );
         }

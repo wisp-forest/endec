@@ -2,8 +2,7 @@ package io.wispforest.endec.format.edm;
 
 import com.google.common.io.ByteStreams;
 import io.wispforest.endec.*;
-import io.wispforest.endec.data.DataTokens;
-import io.wispforest.endec.data.ExtraDataContext;
+import io.wispforest.endec.data.SerializationContext;
 
 import java.io.IOException;
 
@@ -16,9 +15,9 @@ public class EdmEndec implements Endec<EdmElement<?>> {
     private EdmEndec() {}
 
     @Override
-    public void encode(Serializer<?> serializer, ExtraDataContext ctx, EdmElement<?> value) {
+    public void encode(SerializationContext ctx, Serializer<?> serializer, EdmElement<?> value) {
         if (serializer instanceof SelfDescribedSerializer<?>) {
-            new EdmDeserializer(value).readAny(serializer, ctx);
+            new EdmDeserializer(value).readAny(ctx, serializer);
             return;
         }
 
@@ -33,10 +32,10 @@ public class EdmEndec implements Endec<EdmElement<?>> {
     }
 
     @Override
-    public EdmElement<?> decode(Deserializer<?> deserializer, ExtraDataContext ctx) {
+    public EdmElement<?> decode(SerializationContext ctx, Deserializer<?> deserializer) {
         if (deserializer instanceof SelfDescribedDeserializer<?> selfDescribedDeserializer) {
             var nativeSerializer = new EdmSerializer();
-            selfDescribedDeserializer.readAny(nativeSerializer, ctx);
+            selfDescribedDeserializer.readAny(ctx, nativeSerializer);
 
             return nativeSerializer.result();
         }

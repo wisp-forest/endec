@@ -1,6 +1,7 @@
 package io.wispforest.endec.util;
 
 import io.wispforest.endec.Serializer;
+import io.wispforest.endec.format.edm.EdmSerializer;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -10,8 +11,7 @@ import java.util.function.Consumer;
  * A template class for implementing serializers which produce as result an
  * instance of some recursive data structure (like JSON, NBT or EDM)
  * <p>
- * Check {@link io.wispforest.owo.serialization.format.edm.EdmSerializer} or
- * {@link io.wispforest.owo.serialization.format.json.JsonSerializer} for some reference
+ * Check {@link EdmSerializer} or {@link JsonSerializer} for some reference
  * implementations
  */
 public abstract class RecursiveSerializer<T> implements Serializer<T> {

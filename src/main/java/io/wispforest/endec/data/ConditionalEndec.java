@@ -10,9 +10,9 @@ public interface ConditionalEndec<T, E extends Endec<T>> {
 
     E endec();
 
-    boolean useForEncode(Serializer<?> serializer, ExtraDataContext ctx);
+    boolean useForEncode(Serializer<?> serializer, SerializationContext ctx);
 
-    boolean useForDecode(Deserializer<?> serializer, ExtraDataContext ctx);
+    boolean useForDecode(Deserializer<?> serializer, SerializationContext ctx);
 
     static <T1, E1 extends Endec<T1>> ConditionalEndec<T1, E1> of(DataToken<?> token, E1 endec) {
         return new ConditionalEndec<>() {
@@ -27,12 +27,12 @@ public interface ConditionalEndec<T, E extends Endec<T>> {
             }
 
             @Override
-            public boolean useForEncode(Serializer<?> serializer, ExtraDataContext ctx) {
+            public boolean useForEncode(Serializer<?> serializer, SerializationContext ctx) {
                 return ctx.has(token);
             }
 
             @Override
-            public boolean useForDecode(Deserializer<?> serializer, ExtraDataContext ctx) {
+            public boolean useForDecode(Deserializer<?> serializer, SerializationContext ctx) {
                 return ctx.has(token);
             }
         };
@@ -51,12 +51,12 @@ public interface ConditionalEndec<T, E extends Endec<T>> {
             }
 
             @Override
-            public boolean useForEncode(Serializer<?> serializer, ExtraDataContext ctx) {
+            public boolean useForEncode(Serializer<?> serializer, SerializationContext ctx) {
                 return ctx.has(token) && Boolean.TRUE.equals(ctx.get(token));
             }
 
             @Override
-            public boolean useForDecode(Deserializer<?> serializer, ExtraDataContext ctx) {
+            public boolean useForDecode(Deserializer<?> serializer, SerializationContext ctx) {
                 return ctx.has(token) && Boolean.TRUE.equals(ctx.get(token));
             }
         };

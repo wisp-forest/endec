@@ -1,12 +1,10 @@
 package io.wispforest.endec.format.forwarding;
 
-import com.google.common.collect.ImmutableMap;
 import io.wispforest.endec.*;
-import io.wispforest.endec.data.DataToken;
-import io.wispforest.endec.data.ExtraDataContext;
+import io.wispforest.endec.data.SerializationContext;
+import io.wispforest.endec.util.Decoder;
 
 import java.util.Optional;
-import java.util.function.BiFunction;
 
 public class ForwardingDeserializer<T> implements Deserializer<T> {
 
@@ -23,72 +21,72 @@ public class ForwardingDeserializer<T> implements Deserializer<T> {
     //--
 
     @Override
-    public byte readByte(ExtraDataContext ctx) {
+    public byte readByte(SerializationContext ctx) {
         return this.delegate.readByte(ctx);
     }
 
     @Override
-    public short readShort(ExtraDataContext ctx) {
+    public short readShort(SerializationContext ctx) {
         return this.delegate.readShort(ctx);
     }
 
     @Override
-    public int readInt(ExtraDataContext ctx) {
+    public int readInt(SerializationContext ctx) {
         return this.delegate.readInt(ctx);
     }
 
     @Override
-    public long readLong(ExtraDataContext ctx) {
+    public long readLong(SerializationContext ctx) {
         return this.delegate.readLong(ctx);
     }
 
     @Override
-    public float readFloat(ExtraDataContext ctx) {
+    public float readFloat(SerializationContext ctx) {
         return this.delegate.readFloat(ctx);
     }
 
     @Override
-    public double readDouble(ExtraDataContext ctx) {
+    public double readDouble(SerializationContext ctx) {
         return this.delegate.readDouble(ctx);
     }
 
     @Override
-    public int readVarInt(ExtraDataContext ctx) {
+    public int readVarInt(SerializationContext ctx) {
         return this.delegate.readVarInt(ctx);
     }
 
     @Override
-    public long readVarLong(ExtraDataContext ctx) {
+    public long readVarLong(SerializationContext ctx) {
         return this.delegate.readVarLong(ctx);
     }
 
     @Override
-    public boolean readBoolean(ExtraDataContext ctx) {
+    public boolean readBoolean(SerializationContext ctx) {
         return this.delegate.readBoolean(ctx);
     }
 
     @Override
-    public String readString(ExtraDataContext ctx) {
+    public String readString(SerializationContext ctx) {
         return this.delegate.readString(ctx);
     }
 
     @Override
-    public byte[] readBytes(ExtraDataContext ctx) {
+    public byte[] readBytes(SerializationContext ctx) {
         return this.delegate.readBytes(ctx);
     }
 
     @Override
-    public <V> Optional<V> readOptional(ExtraDataContext ctx, Endec<V> endec) {
+    public <V> Optional<V> readOptional(SerializationContext ctx, Endec<V> endec) {
         return this.delegate.readOptional(ctx, endec);
     }
 
     @Override
-    public <E> Sequence<E> sequence(ExtraDataContext ctx, Endec<E> elementEndec) {
+    public <E> Sequence<E> sequence(SerializationContext ctx, Endec<E> elementEndec) {
         return this.delegate.sequence(ctx, elementEndec);
     }
 
     @Override
-    public <V> Map<V> map(ExtraDataContext ctx, Endec<V> valueEndec) {
+    public <V> Map<V> map(SerializationContext ctx, Endec<V> valueEndec) {
         return this.delegate.map(ctx, valueEndec);
     }
 
@@ -98,8 +96,8 @@ public class ForwardingDeserializer<T> implements Deserializer<T> {
     }
 
     @Override
-    public <V> V tryRead(BiFunction<Deserializer<T>, ExtraDataContext, V> reader, ExtraDataContext ctx) {
-        return this.delegate.tryRead(reader, ctx);
+    public <V> V tryRead(SerializationContext ctx, Decoder<V> decoder) {
+        return this.delegate.tryRead(ctx, decoder);
     }
 
     private static class ForwardingSelfDescribedDeserializer<T> extends ForwardingDeserializer<T> implements SelfDescribedDeserializer<T> {
@@ -108,8 +106,8 @@ public class ForwardingDeserializer<T> implements Deserializer<T> {
         }
 
         @Override
-        public <S> void readAny(Serializer<S> visitor, ExtraDataContext ctx) {
-            ((SelfDescribedDeserializer<T>) this.delegate()).readAny(visitor, ctx);
+        public <S> void readAny(SerializationContext ctx, Serializer<S> visitor) {
+            ((SelfDescribedDeserializer<T>) this.delegate()).readAny(ctx, visitor);
         }
     }
 }

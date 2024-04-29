@@ -2,9 +2,7 @@ package io.wispforest.endec;
 
 import io.wispforest.endec.data.*;
 import io.wispforest.endec.impl.*;
-import io.wispforest.endec.util.QuadConsumer;
-import io.wispforest.endec.util.TriConsumer;
-import io.wispforest.endec.util.TriFunction;
+import io.wispforest.endec.util.*;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -14,64 +12,72 @@ import java.util.function.*;
  * A combined <b>en</b>coder and <b>dec</b>oder for values of type {@code T}.
  * <p>
  * To convert between single instances of {@code T} and their serialized form,
- * use {@link #encodeFully(Supplier, ExtraDataContext, Object)} and {@link #decodeFully(Function, ExtraDataContext, Object)}
+ * use {@link #encodeFully(SerializationContext, Supplier, Object)} and {@link #decodeFully(SerializationContext, Function, Object)}
  */
 public interface Endec<T> {
 
     /**
      * Write all data required to reconstruct {@code value} into {@code serializer}
      */
-    void encode(Serializer<?> serializer, ExtraDataContext ctx, T value);
+    void encode(SerializationContext ctx, Serializer<?> serializer, T value);
 
     /**
-     * Decode the data specified by {@link #encode(Serializer, ExtraDataContext, Object)} and reconstruct
+     * Decode the data specified by {@link #encode(SerializationContext, Serializer, Object)} and reconstruct
      * the corresponding instance of {@code T}.
      * <p>
      * Endecs which intend to handle deserialization failure by decoding a different
-     * structure on error, must wrap their initial reads in a call to {@link Deserializer#tryRead(Function)}
+     * structure on error, must wrap their initial reads in a call to {@link Deserializer#tryRead(SerializationContext, Decoder)}
      * to ensure that deserializer state is restored for the subsequent attempt
      */
-    T decode(Deserializer<?> deserializer, ExtraDataContext ctx);
+    T decode(SerializationContext ctx, Deserializer<?> deserializer);
 
     // ---
 
     /**
-     * Create a new serializer with result type {@code E}, call {@link #encode(Serializer, ExtraDataContext, Object)}
+     * Create a new serializer with result type {@code E}, call {@link #encode(SerializationContext, Serializer, Object)}
      * once for the provided {@code value} and return the serializer's {@linkplain Serializer#result() result}
      */
-    default <E> E encodeFully(Supplier<Serializer<E>> serializerConstructor, T value, DataToken.Instance ...instances) {
+    default <E> E encodeFully(SerializationContext ctx, Supplier<Serializer<E>> serializerConstructor, T value) {
         var serializer = serializerConstructor.get();
 
-        this.encode(serializer, serializer.initalContext(ExtraDataContext.of(instances)), value);
+        this.encode(serializer.initalContext(ctx), serializer, value);
 
         return serializer.result();
     }
 
+    default <E> E encodeFully(Supplier<Serializer<E>> serializerConstructor, T value) {
+        return encodeFully(SerializationContext.of(), serializerConstructor, value);
+    }
+
     /**
      * Create a new deserializer by calling {@code deserializerConstructor} with {@code value}
-     * and return the result of {@link #decode(Deserializer, ExtraDataContext)}
+     * and return the result of {@link #decode(SerializationContext, Deserializer)}
      */
-    default <E> T decodeFully(Function<E, Deserializer<E>> deserializerConstructor, E value, DataToken.Instance ...instances) {
+    default <E> T decodeFully(SerializationContext ctx, Function<E, Deserializer<E>> deserializerConstructor, E value) {
         var deserializer = deserializerConstructor.apply(value);
 
-        return this.decode(deserializer, deserializer.initalContext(ExtraDataContext.of(instances)));
+        return this.decode(deserializer.setupContext(ctx), deserializer);
+    }
+
+    default <E> T decodeFully(Function<E, Deserializer<E>> deserializerConstructor, E value) {
+        return decodeFully(SerializationContext.of(), deserializerConstructor, value);
     }
 
     // --- Serializer Primitives ---
 
-    Endec<Void> VOID = Endec.of((serializer, ctx, unused) -> {}, (deserializer, ctx) -> null);
+    Endec<Void> VOID = Endec.of((ctx, serializer, unused) -> {}, (ctx, deserializer) -> null);
 
-    Endec<Boolean> BOOLEAN = Endec.of(Serializer::writeBoolean, Deserializer::readBoolean);
-    Endec<Byte> BYTE = Endec.of(Serializer::writeByte, Deserializer::readByte);
-    Endec<Short> SHORT = Endec.of(Serializer::writeShort, Deserializer::readShort);
-    Endec<Integer> INT = Endec.of(Serializer::writeInt, Deserializer::readInt);
-    Endec<Integer> VAR_INT = Endec.of(Serializer::writeVarInt, Deserializer::readVarInt);
-    Endec<Long> LONG = Endec.of(Serializer::writeLong, Deserializer::readLong);
-    Endec<Long> VAR_LONG = Endec.of(Serializer::writeVarLong, Deserializer::readVarLong);
-    Endec<Float> FLOAT = Endec.of(Serializer::writeFloat, Deserializer::readFloat);
-    Endec<Double> DOUBLE = Endec.of(Serializer::writeDouble, Deserializer::readDouble);
-    Endec<String> STRING = Endec.of(Serializer::writeString, Deserializer::readString);
-    Endec<byte[]> BYTES = Endec.of(Serializer::writeBytes, Deserializer::readBytes);
+    Endec<Boolean> BOOLEAN = Endec.of((ctx, serializer, value) -> serializer.writeBoolean(ctx, value), (ctx, deserializer) -> deserializer.readBoolean(ctx));
+    Endec<Byte> BYTE = Endec.of((ctx, serializer, value) -> serializer.writeByte(ctx, value), (ctx, deserializer) -> deserializer.readByte(ctx));
+    Endec<Short> SHORT = Endec.of((ctx, serializer, value) -> serializer.writeShort(ctx, value), (ctx, deserializer) -> deserializer.readShort(ctx));
+    Endec<Integer> INT = Endec.of((ctx, serializer, value) -> serializer.writeInt(ctx, value), (ctx, deserializer) -> deserializer.readInt(ctx));
+    Endec<Integer> VAR_INT = Endec.of((ctx, serializer, value) -> serializer.writeVarInt(ctx, value), (ctx, deserializer) -> deserializer.readVarInt(ctx));
+    Endec<Long> LONG = Endec.of((ctx, serializer, value) -> serializer.writeLong(ctx, value), (ctx, deserializer) -> deserializer.readLong(ctx));
+    Endec<Long> VAR_LONG = Endec.of((ctx, serializer, value) -> serializer.writeVarLong(ctx, value), (ctx, deserializer) -> deserializer.readVarLong(ctx));
+    Endec<Float> FLOAT = Endec.of((ctx, serializer, value) -> serializer.writeFloat(ctx, value), (ctx, deserializer) -> deserializer.readFloat(ctx));
+    Endec<Double> DOUBLE = Endec.of((ctx, serializer, value) -> serializer.writeDouble(ctx, value), (ctx, deserializer) -> deserializer.readDouble(ctx));
+    Endec<String> STRING = Endec.of((ctx, serializer, value) -> serializer.writeString(ctx, value), (ctx, deserializer) -> deserializer.readString(ctx));
+    Endec<byte[]> BYTES = Endec.of((ctx, serializer, value) -> serializer.writeBytes(ctx, value), (ctx, deserializer) -> deserializer.readBytes(ctx));
 
     // --- Serializer compound types ---
 
@@ -80,11 +86,11 @@ public interface Endec<T> {
      * serialized using this endec
      */
     default Endec<List<T>> listOf() {
-        return of((serializer, ctx, list) -> {
+        return of((ctx, serializer, list) -> {
             try (var sequence = serializer.sequence(ctx, this, list.size())) {
                 list.forEach(sequence::element);
             }
-        }, (deserializer, ctx) -> {
+        }, (ctx, deserializer) -> {
             var sequenceState = deserializer.sequence(ctx, this);
 
             var list = new ArrayList<T>(sequenceState.estimatedSize());
@@ -99,11 +105,11 @@ public interface Endec<T> {
      * keys to values serialized using this endec
      */
     default Endec<Map<String, T>> mapOf() {
-        return of((serializer, ctx, map) -> {
+        return of((ctx, serializer, map) -> {
             try (var mapState = serializer.map(ctx, this, map.size())) {
                 map.forEach(mapState::entry);
             }
-        }, (deserializer, ctx) -> {
+        }, (ctx, deserializer) -> {
             var mapState = deserializer.map(ctx, this);
 
             var map = new HashMap<String, T>(mapState.estimatedSize());
@@ -119,23 +125,23 @@ public interface Endec<T> {
      */
     default Endec<Optional<T>> optionalOf() {
         return of(
-                (serializer, ctx, value) -> serializer.writeOptional(ctx, this, value),
-                (deserializer, ctx) -> deserializer.readOptional(ctx, this)
+                (ctx, serializer, value) -> serializer.writeOptional(ctx, this, value),
+                (ctx, deserializer) -> deserializer.readOptional(ctx, this)
         );
     }
 
     // --- Constructors ---
 
-    static <T> Endec<T> of(TriConsumer<Serializer<?>, ExtraDataContext, T> encode, BiFunction<Deserializer<?>, ExtraDataContext, T> decode) {
+    static <T> Endec<T> of(Encoder<T> encoder, Decoder<T> decoder) {
         return new Endec<>() {
             @Override
-            public void encode(Serializer<?> serializer, ExtraDataContext ctx, T value) {
-                encode.accept(serializer, ctx, value);
+            public void encode(SerializationContext ctx, Serializer<?> serializer, T value) {
+                encoder.encode(ctx, serializer, value);
             }
 
             @Override
-            public T decode(Deserializer<?> deserializer, ExtraDataContext ctx) {
-                return decode.apply(deserializer, ctx);
+            public T decode(SerializationContext ctx, Deserializer<?> deserializer) {
+                return decoder.decode(ctx, deserializer);
             }
         };
     }
@@ -163,11 +169,11 @@ public interface Endec<T> {
      * using {@code valueEndec}
      */
     static <K, V> Endec<Map<K, V>> map(Function<K, String> keyToString, Function<String, K> stringToKey, Endec<V> valueEndec) {
-        return of((serializer, ctx, map) -> {
+        return of((ctx, serializer, map) -> {
             try (var mapState = serializer.map(ctx, valueEndec, map.size())) {
                 map.forEach((k, v) -> mapState.entry(keyToString.apply(k), v));
             }
-        }, (deserializer, ctx) -> {
+        }, (ctx, deserializer) -> {
             var mapState = deserializer.map(ctx, valueEndec);
 
             var map = new HashMap<K, V>(mapState.estimatedSize());
@@ -266,22 +272,16 @@ public interface Endec<T> {
      * }</pre>
      */
     static <T, K> Endec<T> dispatchedStruct(Function<K, StructEndec<? extends T>> variantToEndec, Function<T, K> instanceToVariant, Endec<K> variantEndec, String variantKey) {
-        return new StructEndec<>() {
-            @Override
-            public void encodeStruct(Serializer<?> serializer, Serializer.Struct struct, ExtraDataContext ctx, T value) {
-                var variant = instanceToVariant.apply(value);
-                struct.field(ctx, variantKey, variantEndec, variant);
+        return StructEndec.of((ctx, serializer, struct, value) -> {
+            var variant = instanceToVariant.apply(value);
+            struct.field(ctx, variantKey, variantEndec, variant);
 
-                //noinspection unchecked
-                ((StructEndec<T>) variantToEndec.apply(variant)).encodeStruct(serializer, struct, ctx, value);
-            }
-
-            @Override
-            public T decodeStruct(Deserializer<?> deserializer, Deserializer.Struct struct, ExtraDataContext ctx) {
-                var variant = struct.field(ctx, variantKey, variantEndec);
-                return variantToEndec.apply(variant).decodeStruct(deserializer, struct, ctx);
-            }
-        };
+            //noinspection unchecked
+            ((StructEndec<T>) variantToEndec.apply(variant)).encodeStruct(ctx, serializer, struct, value);
+        }, (ctx, deserializer, struct) -> {
+            var variant = struct.field(ctx, variantKey, variantEndec);
+            return variantToEndec.apply(variant).decodeStruct(ctx, deserializer, struct);
+        });
     }
 
     /**
@@ -292,22 +292,16 @@ public interface Endec<T> {
      * require {@code T} to be a struct, the variant identifier field cannot be merged with the rest and is encoded separately
      */
     static <T, K> Endec<T> dispatched(Function<K, Endec<? extends T>> variantToEndec, Function<T, K> instanceToVariant, Endec<K> variantEndec) {
-        return new StructEndec<>() {
-            @Override
-            public void encodeStruct(Serializer<?> serializer, Serializer.Struct struct, ExtraDataContext ctx, T value) {
-                var variant = instanceToVariant.apply(value);
-                struct.field(ctx, "variant", variantEndec, variant);
+        return StructEndec.of((ctx, serializer, struct, value) -> {
+            var variant = instanceToVariant.apply(value);
+            struct.field(ctx, "variant", variantEndec, variant);
 
-                //noinspection unchecked
-                struct.field(ctx, "instance", ((Endec<T>) variantToEndec.apply(variant)), value);
-            }
-
-            @Override
-            public T decodeStruct(Deserializer<?> deserializer, Deserializer.Struct struct, ExtraDataContext ctx) {
-                var variant = struct.field(ctx, "variant", variantEndec);
-                return struct.field(ctx, "instance", variantToEndec.apply(variant));
-            }
-        };
+            //noinspection unchecked
+            struct.field(ctx, "instance", ((Endec<T>) variantToEndec.apply(variant)), value);
+        }, (ctx, deserializer, struct) -> {
+            var variant = struct.field(ctx, "variant", variantEndec);
+            return struct.field(ctx, "instance", variantToEndec.apply(variant));
+        });
     }
 
     // ---
@@ -340,22 +334,14 @@ public interface Endec<T> {
 
     default <D, R> Endec<R> ofToken(DataToken.Instanced<D> attribute, BiFunction<D, T, R> to, BiFunction<D, R, T> from) {
         return Endec.ofToken(attribute,
-                (serializer, ctx, d, t) -> this.encode(serializer, ctx, from.apply(d, t)),
-                (deserializer, ctx, d) -> to.apply(d, this.decode(deserializer, ctx)));
+                (ctx, serializer, d, t) -> this.encode(ctx, serializer, from.apply(d, t)),
+                (ctx, deserializer, d) -> to.apply(d, this.decode(ctx, deserializer)));
     }
 
-    static <V, D> Endec<V> ofToken(DataToken.Instanced<D> token, QuadConsumer<Serializer<?>, ExtraDataContext, D, V> encode, TriFunction<Deserializer<?>, ExtraDataContext, D, V> decode){
-        return new Endec<>() {
-            @Override
-            public void encode(Serializer<?> serializer, ExtraDataContext ctx, V value) {
-                encode.accept(serializer, ctx, ctx.getOrThrow(token), value);
-            }
-
-            @Override
-            public V decode(Deserializer<?> deserializer, ExtraDataContext ctx) {
-                return decode.apply(deserializer, ctx, ctx.getOrThrow(token));
-            }
-        };
+    static <V, D> Endec<V> ofToken(DataToken.Instanced<D> token, ContextedEncoder<V, D> encode, ContextedDecoder<V, D> decode){
+        return Endec.of(
+                (ctx, serializer, value) -> encode.encodeWith(ctx, serializer, ctx.getOrThrow(token), value),
+                (ctx, deserializer) -> decode.decodeWith(ctx, deserializer, ctx.getOrThrow(token)));
     }
 
     // --- Endec composition ---
@@ -386,13 +372,13 @@ public interface Endec<T> {
     }
 
     /**
-     * Create a new endec which, if decoding using this endec's {@link #decode(Deserializer, ExtraDataContext)} fails,
+     * Create a new endec which, if decoding using this endec's {@link #decode(SerializationContext, Deserializer)} fails,
      * instead tries to decode using {@code decodeOnError}
      */
     default Endec<T> catchErrors(BiFunction<Deserializer<?>, Exception, T> decodeOnError) {
-        return of(this::encode, (deserializer, ctx) -> {
+        return of(this::encode, (ctx, deserializer) -> {
             try {
-                return deserializer.tryRead(this::decode, ctx);
+                return deserializer.tryRead(ctx, this::decode);
             } catch (Exception e) {
                 return decodeOnError.apply(deserializer, e);
             }
@@ -411,7 +397,7 @@ public interface Endec<T> {
 
     /**
      * Create a new keyed endec which (de)serializes the entry
-     * with key {@code key} into/from a {@link io.wispforest.owo.serialization.util.MapCarrier},
+     * with key {@code key} into/from a {@link MapCarrier},
      * decoding to {@code defaultValue} if the map does not contain such an entry
      * <p>
      * If {@code T} is of a mutable type, you almost always want to use {@link #keyed(String, Supplier)} instead
@@ -422,7 +408,7 @@ public interface Endec<T> {
 
     /**
      * Create a new keyed endec which (de)serializes the entry
-     * with key {@code key} into/from a {@link io.wispforest.owo.serialization.util.MapCarrier},
+     * with key {@code key} into/from a {@link MapCarrier},
      * decoding to the result of invoking {@code defaultValueFactory} if the map does not contain such an entry
      * <p>
      * If {@code T} is of an immutable type, you almost always want to use {@link #keyed(String, Object)} instead

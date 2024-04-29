@@ -1,11 +1,10 @@
 package io.wispforest.endec.util;
 
 import io.wispforest.endec.Deserializer;
-import io.wispforest.endec.data.ExtraDataContext;
+import io.wispforest.endec.data.SerializationContext;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -67,11 +66,11 @@ public abstract class RecursiveDeserializer<T> implements Deserializer<T> {
     }
 
     @Override
-    public <V> V tryRead(BiFunction<Deserializer<T>, ExtraDataContext, V> reader, ExtraDataContext ctx) {
+    public <V> V tryRead(SerializationContext ctx, Decoder<V> reader) {
         var framesBackup = new ArrayDeque<>(this.frames);
 
         try {
-            return reader.apply(this, ctx);
+            return reader.decode(ctx, this);
         } catch (Exception e) {
             this.frames.clear();
             this.frames.addAll(framesBackup);

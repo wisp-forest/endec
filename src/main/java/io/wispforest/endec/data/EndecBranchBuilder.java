@@ -3,8 +3,8 @@ package io.wispforest.endec.data;
 import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.Serializer;
-import io.wispforest.endec.util.QuadConsumer;
-import io.wispforest.endec.util.TriFunction;
+import io.wispforest.endec.util.ContextedDecoder;
+import io.wispforest.endec.util.ContextedEncoder;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -17,10 +17,10 @@ public class EndecBranchBuilder<T> {
     public EndecBranchBuilder(){}
 
     public <I, C> EndecBranchBuilder<T> orElseIf(DataToken.Instanced<C> token, Endec<I> endec, BiFunction<C, I, T> to, BiFunction<C, T, I> from) {
-        return this.orElseIf(token, (serializer, ctx, c, t) -> endec.encode(serializer, ctx, from.apply(c, t)), (deserializer, ctx, c) -> to.apply(c, endec.decode(deserializer, ctx)));
+        return this.orElseIf(token, (ctx, serializer, c, t) -> endec.encode(ctx, serializer, from.apply(c, t)), (ctx, deserializer, c) -> to.apply(c, endec.decode(ctx, deserializer)));
     }
 
-    public <C> EndecBranchBuilder<T> orElseIf(DataToken.Instanced<C> token, QuadConsumer<Serializer<?>, ExtraDataContext, C, T> encode, TriFunction<Deserializer<?>, ExtraDataContext, C, T> decode) {
+    public <C> EndecBranchBuilder<T> orElseIf(DataToken.Instanced<C> token, ContextedEncoder<T, C> encode, ContextedDecoder<T, C> decode) {
         return this.orElseIf(token, Endec.ofToken(token, encode, decode));
     }
 
@@ -29,7 +29,7 @@ public class EndecBranchBuilder<T> {
             throw new IllegalStateException("Unable to add a branch for the given Endec due to already containing such in the map! [Name: " + token.name() + "]");
         }
 
-        var conditionalEndec = (token.clazz.equals(Boolean.class))
+        var conditionalEndec = (token.clazz().equals(Boolean.class))
                     ? ConditionalEndec.ofBl((DataToken.Instanced<Boolean>) token, endec)
                     : ConditionalEndec.of(token, endec);
 
@@ -45,7 +45,7 @@ public class EndecBranchBuilder<T> {
 
         return new Endec<>() {
             @Override
-            public void encode(Serializer<?> serializer, ExtraDataContext ctx, T value) {
+            public void encode(SerializationContext ctx, Serializer<?> serializer, T value) {
                 var selectedEndec = endec;
 
                 for (var entry : branches.values()) {
@@ -56,11 +56,11 @@ public class EndecBranchBuilder<T> {
                     break;
                 }
 
-                selectedEndec.encode(serializer, ctx, value);
+                selectedEndec.encode(ctx, serializer, value);
             }
 
             @Override
-            public T decode(Deserializer<?> deserializer, ExtraDataContext ctx) {
+            public T decode(SerializationContext ctx, Deserializer<?> deserializer) {
                 var selectedEndec = endec;
 
                 for (var entry : branches.values()) {
@@ -71,7 +71,7 @@ public class EndecBranchBuilder<T> {
                     break;
                 }
 
-                return selectedEndec.decode(deserializer, ctx);
+                return selectedEndec.decode(ctx, deserializer);
             }
         };
     }

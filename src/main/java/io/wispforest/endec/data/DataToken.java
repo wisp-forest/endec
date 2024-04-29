@@ -5,29 +5,25 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public abstract sealed class DataToken<DATA_TYPE> permits DataToken.Marker, DataToken.Instanced {
+public sealed interface DataToken<DATA_TYPE> permits DataToken.Marker, DataToken.Instanced {
 
-    protected final Class<DATA_TYPE> clazz;
-    protected final String name;
+    Class<DATA_TYPE> clazz();
 
-    protected DataToken(Class<DATA_TYPE> clazz, String name) {
-        this.clazz = clazz;
-        this.name = name;
-    }
+    String name();
 
-    public static Marker marker(String name){
+    static Marker marker(String name){
         return new Marker(name);
     }
 
-    public static <DATA_TYPE> Instanced<DATA_TYPE> instanced(Class<DATA_TYPE> clazz, String name){
+    static <DATA_TYPE> Instanced<DATA_TYPE> instanced(Class<DATA_TYPE> clazz, String name){
         return new Instanced<>(clazz, name);
     }
 
-    public static Map<DataToken<?>, Object> mappedData(Instance... instances) {
+    static Map<DataToken<?>, Object> mappedData(Instance... instances) {
         return Arrays.stream(instances).collect(Collectors.toMap(Instance::getToken, Instance::getValue));
     }
 
-    public static Stream<Instance> streamedData(Map<DataToken<?>, Object> map) {
+    static Stream<Instance> streamedData(Map<DataToken<?>, Object> map) {
         return map.entrySet().stream()
                 .map(entry -> {
                     if(entry.getKey() instanceof DataToken.Instanced<?> instanced) {
@@ -40,20 +36,10 @@ public abstract sealed class DataToken<DATA_TYPE> permits DataToken.Marker, Data
                 });
     }
 
-    public String name() {
-        return name;
-    }
-
-    @Override
-    public String toString() {
-        return "DataToken[" +
-                "clazz=" + clazz + "," +
-                "name=" + name + ']';
-    }
-
-    public static final class Marker extends DataToken<Void> implements Instance {
-        private Marker(String name) {
-            super(Void.class, name);
+    record Marker(String name) implements DataToken<Void>, Instance {
+        @Override
+        public Class<Void> clazz() {
+            return Void.class;
         }
 
         @Override
@@ -67,11 +53,7 @@ public abstract sealed class DataToken<DATA_TYPE> permits DataToken.Marker, Data
         }
     }
 
-    public static final class Instanced<DATA_TYPE> extends DataToken<DATA_TYPE> {
-        public Instanced(Class<DATA_TYPE> clazz, String name) {
-            super(clazz, name);
-        }
-
+    record Instanced<DATA_TYPE>(Class<DATA_TYPE> clazz, String name) implements DataToken<DATA_TYPE> {
         private Instance withUnsafe(Object data) {
             if(!this.clazz.isInstance(data)) throw new IllegalStateException("Data passed for a given DataToken was found not to be instanceof the token used! [Token: " + this + ", Data: " + data + "]");
 
@@ -93,7 +75,7 @@ public abstract sealed class DataToken<DATA_TYPE> permits DataToken.Marker, Data
         }
     }
 
-    public interface Instance {
+    interface Instance {
         Object getValue();
         DataToken<?> getToken();
     }
