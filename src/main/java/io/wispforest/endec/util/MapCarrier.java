@@ -1,6 +1,6 @@
 package io.wispforest.endec.util;
 
-import io.wispforest.endec.data.SerializationContext;
+import io.wispforest.endec.SerializationContext;
 import io.wispforest.endec.impl.KeyedEndec;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

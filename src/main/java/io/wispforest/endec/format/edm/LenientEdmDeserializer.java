@@ -1,7 +1,7 @@
 package io.wispforest.endec.format.edm;
 
 import io.wispforest.endec.Endec;
-import io.wispforest.endec.data.SerializationContext;
+import io.wispforest.endec.SerializationContext;
 
 import java.util.Optional;
 

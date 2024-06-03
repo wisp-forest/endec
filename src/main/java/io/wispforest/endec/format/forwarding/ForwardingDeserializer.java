@@ -1,8 +1,7 @@
 package io.wispforest.endec.format.forwarding;
 
 import io.wispforest.endec.*;
-import io.wispforest.endec.data.SerializationContext;
-import io.wispforest.endec.util.Decoder;
+import io.wispforest.endec.SerializationContext;
 
 import java.util.Optional;
 

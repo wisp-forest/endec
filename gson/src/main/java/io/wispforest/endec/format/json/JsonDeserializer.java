@@ -1,14 +1,15 @@
 package io.wispforest.endec.format.json;
 
-
-import com.google.gson.*;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import io.wispforest.endec.*;
-import io.wispforest.endec.data.DataTokens;
-import io.wispforest.endec.data.SerializationContext;
 import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.Optional;
 
 public class JsonDeserializer extends RecursiveDeserializer<JsonElement> implements SelfDescribedDeserializer<JsonElement> {
 
@@ -22,9 +23,8 @@ public class JsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
 
     @Override
     public SerializationContext setupContext(SerializationContext ctx) {
-        return ctx.with(DataTokens.HUMAN_READABLE);
+        return super.setupContext(ctx).withAttributes(SerializationAttributes.HUMAN_READABLE);
     }
-
 
     // ---
 
@@ -178,7 +178,6 @@ public class JsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
 
         private final SerializationContext ctx;
         private final Endec<V> valueEndec;
-
         private final Iterator<JsonElement> elements;
         private final int size;
 
@@ -204,7 +203,7 @@ public class JsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
         public V next() {
             return JsonDeserializer.this.frame(
                     this.elements::next,
-                    () -> this.valueEndec.decode(ctx, JsonDeserializer.this),
+                    () -> this.valueEndec.decode(this.ctx, JsonDeserializer.this),
                     false
             );
         }
@@ -214,9 +213,7 @@ public class JsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
 
         private final SerializationContext ctx;
         private final Endec<V> valueEndec;
-
         private final Iterator<java.util.Map.Entry<String, JsonElement>> entries;
-
         private final int size;
 
         private Map(SerializationContext ctx, Endec<V> valueEndec, JsonObject entries) {
@@ -242,7 +239,7 @@ public class JsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
             var entry = entries.next();
             return JsonDeserializer.this.frame(
                     entry::getValue,
-                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(ctx, JsonDeserializer.this)),
+                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx, JsonDeserializer.this)),
                     false
             );
         }
@@ -257,7 +254,7 @@ public class JsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
         }
 
         @Override
-        public <F> @Nullable F field(SerializationContext ctx, String name, Endec<F> endec) {
+        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec) {
             if (!this.object.has(name)) {
                 throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
             }
@@ -269,7 +266,7 @@ public class JsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
         }
 
         @Override
-        public <F> @Nullable F field(SerializationContext ctx, String name, Endec<F> endec, @Nullable F defaultValue) {
+        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
             if (!this.object.has(name)) return defaultValue;
             return JsonDeserializer.this.frame(
                     () -> this.object.get(name),

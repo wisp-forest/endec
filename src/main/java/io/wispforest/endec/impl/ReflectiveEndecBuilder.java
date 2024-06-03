@@ -1,6 +1,5 @@
 package io.wispforest.endec.impl;
 
-
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.annotations.SealedPolymorphic;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -18,9 +17,9 @@ public class ReflectiveEndecBuilder {
 
     public static final ReflectiveEndecBuilder INSTANCE = new ReflectiveEndecBuilder();
 
-    private final Map<Class<?>, Endec<?>> CLASS_TO_ENDEC = new HashMap<>();
+    private final Map<Class<?>, Endec<?>> classToEndec = new HashMap<>();
 
-    public ReflectiveEndecBuilder(){
+    public ReflectiveEndecBuilder() {
         initBase(this);
     }
 
@@ -28,12 +27,11 @@ public class ReflectiveEndecBuilder {
      * Register {@code endec} to be used for (de)serializing instances of {@code clazz}
      */
     public <T> ReflectiveEndecBuilder register(Endec<T> endec, Class<T> clazz) {
-        if (CLASS_TO_ENDEC.containsKey(clazz)) {
+        if (classToEndec.containsKey(clazz)) {
             throw new IllegalStateException("Class '" + clazz.getName() + "' already has an associated endec");
         }
 
-        CLASS_TO_ENDEC.put(clazz, endec);
-
+        classToEndec.put(clazz, endec);
         return this;
     }
 
@@ -112,7 +110,7 @@ public class ReflectiveEndecBuilder {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private <T> @Nullable Endec<T> getOrNull(Class<T> clazz) {
-        Endec<T> serializer = (Endec<T>) CLASS_TO_ENDEC.get(clazz);
+        Endec<T> serializer = (Endec<T>) classToEndec.get(clazz);
 
         if (serializer == null) {
             if (Record.class.isAssignableFrom(clazz)) {
@@ -127,7 +125,7 @@ public class ReflectiveEndecBuilder {
                 return null;
             }
 
-            CLASS_TO_ENDEC.put(clazz, serializer);
+            classToEndec.put(clazz, serializer);
         }
 
 

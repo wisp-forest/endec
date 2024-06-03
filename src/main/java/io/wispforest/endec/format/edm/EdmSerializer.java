@@ -1,10 +1,8 @@
 package io.wispforest.endec.format.edm;
 
 import io.wispforest.endec.*;
-import io.wispforest.endec.data.SerializationContext;
-import io.wispforest.endec.util.MutableHolder;
+import io.wispforest.endec.SerializationContext;
 import io.wispforest.endec.util.RecursiveSerializer;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -83,15 +81,13 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
 
     @Override
     public <V> void writeOptional(SerializationContext ctx, Endec<V> endec, Optional<V> optional) {
-        var holder = new MutableHolder<@Nullable EdmElement<?>>();
-
+        var result = new EdmElement<?>[1];
         this.frame(encoded -> {
             optional.ifPresent(v -> endec.encode(ctx, this, v));
-
-            holder.setValue(encoded.get());
+            result[0] = encoded.get();
         }, false);
 
-        this.consume(EdmElement.wrapOptional(Optional.ofNullable(holder.getValue())));
+        this.consume(EdmElement.wrapOptional(Optional.ofNullable(result[0])));
     }
 
     // ---
@@ -177,7 +173,7 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
         }
 
         @Override
-        public <F> Serializer.Struct field(SerializationContext ctx, String name, Endec<F> endec, F value) {
+        public <F> Serializer.Struct field(String name, SerializationContext ctx, Endec<F> endec, F value) {
             EdmSerializer.this.frame(encoded -> {
                 endec.encode(ctx, EdmSerializer.this, value);
                 this.result.put(name, encoded.require("struct field"));

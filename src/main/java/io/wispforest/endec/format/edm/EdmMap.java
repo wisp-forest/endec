@@ -1,7 +1,7 @@
 package io.wispforest.endec.format.edm;
 
 
-import io.wispforest.endec.data.SerializationContext;
+import io.wispforest.endec.SerializationContext;
 import io.wispforest.endec.impl.KeyedEndec;
 import io.wispforest.endec.util.MapCarrier;
 import org.jetbrains.annotations.NotNull;
@@ -15,7 +15,6 @@ public final class EdmMap extends EdmElement<Map<String, EdmElement<?>>> impleme
 
     EdmMap(Map<String, EdmElement<?>> map) {
         super(Collections.unmodifiableMap(map), Type.MAP);
-
         this.map = map;
     }
 

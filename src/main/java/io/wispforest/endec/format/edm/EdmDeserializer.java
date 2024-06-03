@@ -1,7 +1,7 @@
 package io.wispforest.endec.format.edm;
 
 import io.wispforest.endec.*;
-import io.wispforest.endec.data.SerializationContext;
+import io.wispforest.endec.SerializationContext;
 import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
@@ -98,12 +98,12 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
 
     @Override
     public <E> Deserializer.Sequence<E> sequence(SerializationContext ctx, Endec<E> elementEndec) {
-        return new Sequence<>(elementEndec, this.getValue().cast(), ctx);
+        return new Sequence<>(ctx, elementEndec, this.getValue().cast());
     }
 
     @Override
     public <V> Deserializer.Map<V> map(SerializationContext ctx, Endec<V> valueEndec) {
-        return new Map<>(valueEndec, this.getValue().cast(), ctx);
+        return new Map<>(ctx, valueEndec, this.getValue().cast());
     }
 
     @Override
@@ -129,15 +129,14 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
             case BOOLEAN -> visitor.writeBoolean(ctx, value.cast());
             case STRING -> visitor.writeString(ctx, value.cast());
             case BYTES -> visitor.writeBytes(ctx, value.cast());
-            case OPTIONAL ->
-                    visitor.writeOptional(ctx, Endec.<EdmElement<?>>of(this::visit, (deserializer, ctx1) -> null), value.cast());
+            case OPTIONAL -> visitor.writeOptional(ctx, Endec.<EdmElement<?>>of(this::visit, (ctx1, deserializer) -> null), value.cast());
             case SEQUENCE -> {
-                try (var sequence = visitor.sequence(ctx, Endec.<EdmElement<?>>of(this::visit, (deserializer, ctx1) -> null), value.<List<EdmElement<?>>>cast().size())) {
+                try (var sequence = visitor.sequence(ctx, Endec.<EdmElement<?>>of(this::visit, (ctx1, deserializer) -> null), value.<List<EdmElement<?>>>cast().size())) {
                     value.<List<EdmElement<?>>>cast().forEach(sequence::element);
                 }
             }
             case MAP -> {
-                try (var map = visitor.map(ctx, Endec.<EdmElement<?>>of(this::visit, (deserializer, ctx1) -> null), value.<java.util.Map<String, EdmElement<?>>>cast().size())) {
+                try (var map = visitor.map(ctx, Endec.<EdmElement<?>>of(this::visit, (ctx1, deserializer) -> null), value.<java.util.Map<String, EdmElement<?>>>cast().size())) {
                     value.<java.util.Map<String, EdmElement<?>>>cast().forEach(map::entry);
                 }
             }
@@ -148,15 +147,14 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
 
     private class Sequence<V> implements Deserializer.Sequence<V> {
 
-        private final Endec<V> valueEndec;
         private final SerializationContext ctx;
-
+        private final Endec<V> valueEndec;
         private final Iterator<EdmElement<?>> elements;
         private final int size;
 
-        private Sequence(Endec<V> valueEndec, List<EdmElement<?>> elements, SerializationContext ctx) {
-            this.valueEndec = valueEndec;
+        private Sequence(SerializationContext ctx, Endec<V> valueEndec, List<EdmElement<?>> elements) {
             this.ctx = ctx;
+            this.valueEndec = valueEndec;
 
             this.elements = elements.iterator();
             this.size = elements.size();
@@ -176,7 +174,7 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
         public V next() {
             return EdmDeserializer.this.frame(
                     this.elements::next,
-                    () -> this.valueEndec.decode(ctx, EdmDeserializer.this),
+                    () -> this.valueEndec.decode(this.ctx, EdmDeserializer.this),
                     false
             );
         }
@@ -184,15 +182,14 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
 
     private class Map<V> implements Deserializer.Map<V> {
 
-        private final Endec<V> valueEndec;
         private final SerializationContext ctx;
-
+        private final Endec<V> valueEndec;
         private final Iterator<java.util.Map.Entry<String, EdmElement<?>>> entries;
         private final int size;
 
-        private Map(Endec<V> valueEndec, java.util.Map<String, EdmElement<?>> entries, SerializationContext ctx) {
-            this.valueEndec = valueEndec;
+        private Map(SerializationContext ctx, Endec<V> valueEndec, java.util.Map<String, EdmElement<?>> entries) {
             this.ctx = ctx;
+            this.valueEndec = valueEndec;
 
             this.entries = entries.entrySet().iterator();
             this.size = entries.size();
@@ -213,7 +210,7 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
             var entry = entries.next();
             return EdmDeserializer.this.frame(
                     entry::getValue,
-                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(ctx, EdmDeserializer.this)),
+                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx, EdmDeserializer.this)),
                     false
             );
         }
@@ -228,7 +225,7 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
         }
 
         @Override
-        public <F> @Nullable F field(SerializationContext ctx, String name, Endec<F> endec) {
+        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec) {
             if (!this.map.containsKey(name)) {
                 throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
             }
@@ -240,7 +237,7 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
         }
 
         @Override
-        public <F> @Nullable F field(SerializationContext ctx, String name, Endec<F> endec, @Nullable F defaultValue) {
+        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
             if (!this.map.containsKey(name)) return defaultValue;
             return EdmDeserializer.this.frame(
                     () -> this.map.get(name),

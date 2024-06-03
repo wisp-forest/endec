@@ -4,12 +4,11 @@ import blue.endless.jankson.Jankson;
 import blue.endless.jankson.JsonElement;
 import blue.endless.jankson.api.SyntaxError;
 import io.wispforest.endec.*;
-import io.wispforest.endec.data.SerializationContext;
+import io.wispforest.endec.SerializationContext;
 
 public final class JsonEndec implements Endec<JsonElement> {
 
-    private final Jankson DEFAULT = new Jankson.Builder().build();
-
+    private static final Jankson JANKSON = new Jankson.Builder().build();
     public static final JsonEndec INSTANCE = new JsonEndec();
 
     private JsonEndec() {}
@@ -34,7 +33,7 @@ public final class JsonEndec implements Endec<JsonElement> {
         }
 
         try {
-            return DEFAULT.load(deserializer.readString(ctx));
+            return JANKSON.load(deserializer.readString(ctx));
         } catch (SyntaxError error) {
             throw new RuntimeException(error);
         }

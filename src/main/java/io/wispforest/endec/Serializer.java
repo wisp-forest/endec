@@ -1,14 +1,13 @@
 package io.wispforest.endec;
 
 
-import io.wispforest.endec.data.SerializationContext;
 import io.wispforest.endec.util.Endable;
 
 import java.util.Optional;
 
 public interface Serializer<T> {
 
-    default SerializationContext initalContext(SerializationContext ctx) {
+    default SerializationContext setupContext(SerializationContext ctx) {
         return ctx;
     }
 
@@ -43,6 +42,6 @@ public interface Serializer<T> {
     }
 
     interface Struct extends Endable {
-        <F> Struct field(SerializationContext ctx, String name, Endec<F> endec, F value);
+        <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value);
     }
 }

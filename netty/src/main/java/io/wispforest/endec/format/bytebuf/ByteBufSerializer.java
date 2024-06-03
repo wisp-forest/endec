@@ -3,9 +3,9 @@ package io.wispforest.endec.format.bytebuf;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.wispforest.endec.Endec;
+import io.wispforest.endec.SerializationContext;
 import io.wispforest.endec.Serializer;
-import io.wispforest.endec.data.SerializationContext;
-import io.wispforest.endec.util.VarUtils;
+import io.wispforest.endec.util.VarInts;
 
 import java.util.Optional;
 
@@ -57,12 +57,12 @@ public class ByteBufSerializer<B extends ByteBuf> implements Serializer<B> {
 
     @Override
     public void writeVarInt(SerializationContext ctx, int value) {
-        VarUtils.writeInt(value, value1 -> writeByte(ctx, value1));
+        VarInts.writeInt(value, b -> this.writeByte(ctx, b));
     }
 
     @Override
     public void writeVarLong(SerializationContext ctx, long value) {
-        VarUtils.writeLong(value, value1 -> writeByte(ctx, value1));
+        VarInts.writeLong(value, b -> this.writeByte(ctx, b));
     }
 
     // ---
@@ -95,18 +95,18 @@ public class ByteBufSerializer<B extends ByteBuf> implements Serializer<B> {
     @Override
     public <V> Map<V> map(SerializationContext ctx, Endec<V> valueEndec, int size) {
         this.writeVarInt(ctx, size);
-        return new Sequence<>(valueEndec, ctx);
+        return new Sequence<>(ctx, valueEndec);
     }
 
     @Override
     public <E> Serializer.Sequence<E> sequence(SerializationContext ctx, Endec<E> elementEndec, int size) {
         this.writeVarInt(ctx, size);
-        return new Sequence<>(elementEndec, ctx);
+        return new Sequence<>(ctx, elementEndec);
     }
 
     @Override
     public Struct struct() {
-        return new Sequence<>(null, SerializationContext.of());
+        return new Sequence<>(null, null);
     }
 
     // ---
@@ -120,27 +120,27 @@ public class ByteBufSerializer<B extends ByteBuf> implements Serializer<B> {
 
     private class Sequence<V> implements Serializer.Sequence<V>, Struct, Map<V> {
 
-        private final Endec<V> valueEndec;
         private final SerializationContext ctx;
+        private final Endec<V> valueEndec;
 
-        private Sequence(Endec<V> valueEndec, SerializationContext ctx) {
-            this.valueEndec = valueEndec;
+        private Sequence(SerializationContext ctx, Endec<V> valueEndec) {
             this.ctx = ctx;
+            this.valueEndec = valueEndec;
         }
 
         @Override
         public void element(V element) {
-            this.valueEndec.encode(ctx, ByteBufSerializer.this, element);
+            this.valueEndec.encode(this.ctx, ByteBufSerializer.this, element);
         }
 
         @Override
         public void entry(String key, V value) {
-            ByteBufSerializer.this.writeString(ctx, key);
-            this.valueEndec.encode(ctx, ByteBufSerializer.this, value);
+            ByteBufSerializer.this.writeString(this.ctx, key);
+            this.valueEndec.encode(this.ctx, ByteBufSerializer.this, value);
         }
 
         @Override
-        public <F> Struct field(SerializationContext ctx, String name, Endec<F> endec, F value) {
+        public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value) {
             endec.encode(ctx, ByteBufSerializer.this, value);
             return this;
         }

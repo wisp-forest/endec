@@ -1,7 +1,7 @@
 package io.wispforest.endec.util;
 
 import io.wispforest.endec.Endec;
-import io.wispforest.endec.data.SerializationContext;
+import io.wispforest.endec.SerializationContext;
 
 public interface EndecBuffer {
     default <T> void write(SerializationContext ctx, Endec<T> endec, T value) {

@@ -1,12 +1,6 @@
 package io.wispforest.endec;
 
-import io.wispforest.endec.data.DataToken;
-import io.wispforest.endec.data.SerializationContext;
 import io.wispforest.endec.impl.StructField;
-import io.wispforest.endec.util.ContextedStructDecoder;
-import io.wispforest.endec.util.ContextedStructEncoder;
-import io.wispforest.endec.util.StructDecoder;
-import io.wispforest.endec.util.StructEncoder;
 
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -39,37 +33,31 @@ public interface StructEndec<T> extends Endec<T> {
         return new StructField.Flat<>(this, getter);
     }
 
-    static <R> StructEndec<R> of(StructEncoder<R> encoder, StructDecoder<R> decoder) {
-        return new StructEndec<R>() {
+    @Override
+    default <R> StructEndec<R> xmap(Function<T, R> to, Function<R, T> from) {
+        return new StructEndec<>() {
             @Override
             public void encodeStruct(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, R value) {
-                encoder.encodeStruct(ctx, serializer, struct, value);
+                StructEndec.this.encodeStruct(ctx, serializer, struct, from.apply(value));
             }
-
             @Override
             public R decodeStruct(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct) {
-                return decoder.decodeStruct(ctx, deserializer, struct);
+                return to.apply(StructEndec.this.decodeStruct(ctx, deserializer, struct));
             }
         };
     }
 
     @Override
-    default <D, R> StructEndec<R> ofToken(DataToken.Instanced<D> attribute, BiFunction<D, T, R> to, BiFunction<D, R, T> from) {
-        return ofTokenStruct(attribute,
-                (ctx, serializer, struct, d, r) -> StructEndec.this.encodeStruct(ctx, serializer, struct, from.apply(d, r)),
-                (ctx, deserializer, struct, d) -> to.apply(d, StructEndec.this.decodeStruct(ctx, deserializer, struct)));
-    }
-
-    static <R, C> StructEndec<R> ofTokenStruct(DataToken.Instanced<C> token, ContextedStructEncoder<R, C> encode, ContextedStructDecoder<R, C> decode){
-        return StructEndec.of(
-                (ctx, serializer, struct, value) -> encode.encodeStructWith(ctx, serializer, struct, ctx.getOrThrow(token), value),
-                (ctx, deserializer, struct) -> decode.decodeStructWith(ctx, deserializer, struct, ctx.getOrThrow(token)));
-    }
-
-    @Override
-    default <R> StructEndec<R> xmap(Function<T, R> to, Function<R, T> from) {
-        return StructEndec.of(
-                (ctx, serializer, struct, value) -> StructEndec.this.encodeStruct(ctx, serializer, struct, from.apply(value)),
-                (ctx, deserializer, struct) -> to.apply(StructEndec.this.decodeStruct(ctx, deserializer, struct)));
+    default <R> StructEndec<R> xmapWithContext(BiFunction<SerializationContext, T, R> to, BiFunction<SerializationContext, R, T> from) {
+        return new StructEndec<>() {
+            @Override
+            public void encodeStruct(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, R value) {
+                StructEndec.this.encodeStruct(ctx, serializer, struct, from.apply(ctx, value));
+            }
+            @Override
+            public R decodeStruct(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct) {
+                return to.apply(ctx, StructEndec.this.decodeStruct(ctx, deserializer, struct));
+            }
+        };
     }
 }

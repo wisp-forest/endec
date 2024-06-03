@@ -2,7 +2,7 @@ package io.wispforest.endec.util;
 
 import it.unimi.dsi.fastutil.bytes.ByteConsumer;
 
-public class VarUtils {
+public class VarInts {
 
     public static final int SEGMENT_BITS = 127;
     public static final int CONTINUE_BIT = 128;

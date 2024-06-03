@@ -1,7 +1,6 @@
 package io.wispforest.endec.util;
 
 import io.wispforest.endec.Deserializer;
-import io.wispforest.endec.data.SerializationContext;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -16,9 +15,7 @@ import java.util.function.Supplier;
  * which backs up the decoding frames and restores them upon failure. If this, for some reason,
  * is not the appropriate behavior for your input format, provide a custom implementation
  * <p>
- * Check {@link io.wispforest.owo.serialization.format.edm.EdmSerializer} or
- * {@link io.wispforest.owo.serialization.format.json.JsonDeserializer} for some reference
- * implementations
+ * Check {@link io.wispforest.endec.format.edm.EdmDeserializer} for a reference implementation
  */
 public abstract class RecursiveDeserializer<T> implements Deserializer<T> {
 
@@ -66,11 +63,11 @@ public abstract class RecursiveDeserializer<T> implements Deserializer<T> {
     }
 
     @Override
-    public <V> V tryRead(SerializationContext ctx, Decoder<V> reader) {
+    public <V> V tryRead(Function<Deserializer<T>, V> reader) {
         var framesBackup = new ArrayDeque<>(this.frames);
 
         try {
-            return reader.decode(ctx, this);
+            return reader.apply(this);
         } catch (Exception e) {
             this.frames.clear();
             this.frames.addAll(framesBackup);

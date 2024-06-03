@@ -1,11 +1,10 @@
 package io.wispforest.endec;
 
-import io.wispforest.endec.data.SerializationContext;
-import io.wispforest.endec.util.Decoder;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.Optional;
+import java.util.function.Function;
 
 public interface Deserializer<T> {
 
@@ -32,7 +31,7 @@ public interface Deserializer<T> {
     <V> Map<V> map(SerializationContext ctx, Endec<V> valueEndec);
     Struct struct();
 
-    <V> V tryRead(SerializationContext ctx, Decoder<V> reader);
+    <V> V tryRead(Function<Deserializer<T>, V> reader);
 
     interface Sequence<E> extends Iterator<E> {
 
@@ -61,12 +60,12 @@ public interface Deserializer<T> {
          * Decode the value of field {@code name} using {@code endec}. If no
          * such field exists in the serialized data, an exception is thrown
          */
-        <F> @Nullable F field(SerializationContext ctx, String name, Endec<F> endec);
+        <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec);
 
         /**
          * Decode the value of field {@code name} using {@code endec}. If no
          * such field exists in the serialized data, {@code defaultValue} is returned
          */
-        <F> @Nullable F field(SerializationContext ctx, String name, Endec<F> endec, @Nullable F defaultValue);
+        <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue);
     }
 }

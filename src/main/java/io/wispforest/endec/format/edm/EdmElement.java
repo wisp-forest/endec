@@ -44,6 +44,10 @@ public sealed class EdmElement<T> permits EdmMap {
         }
     }
 
+    /**
+     * Create a copy of this EDM element as an {@link EdmMap}, which
+     * implements the {@link io.wispforest.endec.util.MapCarrier} interface
+     */
     public EdmMap asMap() {
         if(this.type != Type.MAP) {
             throw new IllegalStateException("Cannot cast EDM element of type " + this.type + " to MAP");

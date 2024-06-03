@@ -2,14 +2,14 @@ package io.wispforest.endec.format.data;
 
 import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
-import io.wispforest.endec.data.SerializationContext;
-import io.wispforest.endec.util.Decoder;
-import io.wispforest.endec.util.VarUtils;
+import io.wispforest.endec.SerializationContext;
+import io.wispforest.endec.util.VarInts;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.DataInput;
 import java.io.IOException;
 import java.util.Optional;
+import java.util.function.Function;
 
 public class DataInputDeserializer implements Deserializer<DataInput> {
 
@@ -83,12 +83,12 @@ public class DataInputDeserializer implements Deserializer<DataInput> {
 
     @Override
     public int readVarInt(SerializationContext ctx) {
-        return VarUtils.readInt(() -> readByte(ctx));
+        return VarInts.readInt(() -> this.readByte(ctx));
     }
 
     @Override
     public long readVarLong(SerializationContext ctx) {
-        return VarUtils.readLong(() -> readByte(ctx));
+        return VarInts.readLong(() -> this.readByte(ctx));
     }
 
     // ---
@@ -134,7 +134,7 @@ public class DataInputDeserializer implements Deserializer<DataInput> {
     // ---
 
     @Override
-    public <V> V tryRead(SerializationContext ctx, Decoder<V> decoder) {
+    public <V> V tryRead(Function<Deserializer<DataInput>, V> reader) {
         throw new UnsupportedOperationException("As DataInput cannot be rewound, tryRead(...) cannot be supported");
     }
 
@@ -142,35 +142,33 @@ public class DataInputDeserializer implements Deserializer<DataInput> {
 
     @Override
     public <E> Deserializer.Sequence<E> sequence(SerializationContext ctx, Endec<E> elementEndec) {
-        return new Sequence<>(elementEndec, this.readVarInt(ctx), ctx);
+        return new Sequence<>(ctx, elementEndec, this.readVarInt(ctx));
     }
 
     @Override
     public <V> Deserializer.Map<V> map(SerializationContext ctx, Endec<V> valueEndec) {
-        return new Map<>(valueEndec, this.readVarInt(ctx), ctx);
+        return new Map<>(ctx, valueEndec, this.readVarInt(ctx));
     }
 
     @Override
     public Struct struct() {
-        return new Sequence<>(null, 0, SerializationContext.of());
+        return new Sequence<>(null, null, 0);
     }
 
     // ---
 
     private class Sequence<V> implements Deserializer.Sequence<V>, Struct {
 
-        private final Endec<V> valueEndec;
         private final SerializationContext ctx;
-
+        private final Endec<V> valueEndec;
         private final int size;
 
         private int index = 0;
 
-        private Sequence(Endec<V> valueEndec, int size, SerializationContext ctx) {
+        private Sequence(SerializationContext ctx, Endec<V> valueEndec, int size) {
+            this.ctx = ctx;
             this.valueEndec = valueEndec;
             this.size = size;
-
-            this.ctx = ctx;
         }
 
         @Override
@@ -186,34 +184,32 @@ public class DataInputDeserializer implements Deserializer<DataInput> {
         @Override
         public V next() {
             this.index++;
-            return this.valueEndec.decode(ctx, DataInputDeserializer.this);
+            return this.valueEndec.decode(this.ctx, DataInputDeserializer.this);
         }
 
         @Override
-        public <F> @Nullable F field(SerializationContext ctx, String name, Endec<F> endec) {
+        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec) {
             return endec.decode(ctx, DataInputDeserializer.this);
         }
 
         @Override
-        public <F> @Nullable F field(SerializationContext ctx, @Nullable String field, Endec<F> endec, @Nullable F defaultValue) {
+        public <F> @Nullable F field(@Nullable String field, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
             return endec.decode(ctx, DataInputDeserializer.this);
         }
     }
 
     private class Map<V> implements Deserializer.Map<V> {
 
-        private final Endec<V> valueEndec;
         private final SerializationContext ctx;
-
+        private final Endec<V> valueEndec;
         private final int size;
 
         private int index = 0;
 
-        private Map(Endec<V> valueEndec, int size, SerializationContext ctx) {
+        private Map(SerializationContext ctx, Endec<V> valueEndec, int size) {
+            this.ctx = ctx;
             this.valueEndec = valueEndec;
             this.size = size;
-
-            this.ctx = ctx;
         }
 
         @Override
@@ -230,8 +226,8 @@ public class DataInputDeserializer implements Deserializer<DataInput> {
         public java.util.Map.Entry<String, V> next() {
             this.index++;
             return java.util.Map.entry(
-                    DataInputDeserializer.this.readString(ctx),
-                    this.valueEndec.decode(ctx, DataInputDeserializer.this)
+                    DataInputDeserializer.this.readString(this.ctx),
+                    this.valueEndec.decode(this.ctx, DataInputDeserializer.this)
             );
         }
     }

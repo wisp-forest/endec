@@ -1,7 +1,6 @@
 package io.wispforest.endec;
 
 import com.google.gson.JsonObject;
-import io.wispforest.endec.data.SerializationContext;
 import io.wispforest.endec.format.json.JsonDeserializer;
 import io.wispforest.endec.format.json.JsonSerializer;
 import io.wispforest.endec.impl.KeyedEndec;

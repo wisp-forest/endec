@@ -2,10 +2,10 @@ package io.wispforest.endec.format.json;
 
 import blue.endless.jankson.*;
 import io.wispforest.endec.SelfDescribedSerializer;
-import io.wispforest.endec.data.DataTokens;
+import io.wispforest.endec.SerializationAttributes;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.Serializer;
-import io.wispforest.endec.data.SerializationContext;
+import io.wispforest.endec.SerializationContext;
 import io.wispforest.endec.util.RecursiveSerializer;
 
 import java.util.Optional;
@@ -28,8 +28,8 @@ public class JsonSerializer extends RecursiveSerializer<JsonElement> implements 
     }
 
     @Override
-    public SerializationContext initalContext(SerializationContext ctx) {
-        return ctx.with(DataTokens.HUMAN_READABLE);
+    public SerializationContext setupContext(SerializationContext ctx) {
+        return super.setupContext(ctx).withAttributes(SerializationAttributes.HUMAN_READABLE);
     }
 
     // ---
@@ -114,32 +114,30 @@ public class JsonSerializer extends RecursiveSerializer<JsonElement> implements 
 
     @Override
     public <E> Serializer.Sequence<E> sequence(SerializationContext ctx, Endec<E> elementEndec, int size) {
-        return new Sequence<>(elementEndec, size, ctx);
+        return new Sequence<>(ctx, elementEndec, size);
     }
 
     @Override
     public <V> Serializer.Map<V> map(SerializationContext ctx, Endec<V> valueEndec, int size) {
-        return new Map<>(valueEndec, ctx);
+        return new Map<>(ctx, valueEndec);
     }
 
     @Override
     public Struct struct() {
-        return new Map<>(null, SerializationContext.of());
+        return new Map<>(null, null);
     }
 
     // ---
 
     private class Map<V> implements Serializer.Map<V>, Struct {
 
+        private final SerializationContext ctx;
         private final Endec<V> valueEndec;
         private final JsonObject result;
 
-        private final SerializationContext ctx;
-
-        private Map(Endec<V> valueEndec, SerializationContext ctx) {
-            this.valueEndec = valueEndec;
-
+        private Map(SerializationContext ctx, Endec<V> valueEndec) {
             this.ctx = ctx;
+            this.valueEndec = valueEndec;
 
             if (JsonSerializer.this.prefix != null) {
                 if (JsonSerializer.this.prefix instanceof JsonObject prefixObject) {
@@ -156,13 +154,13 @@ public class JsonSerializer extends RecursiveSerializer<JsonElement> implements 
         @Override
         public void entry(String key, V value) {
             JsonSerializer.this.frame(encoded -> {
-                this.valueEndec.encode(ctx, JsonSerializer.this, value);
+                this.valueEndec.encode(this.ctx, JsonSerializer.this, value);
                 this.result.put(key, encoded.require("map value"));
             }, false);
         }
 
         @Override
-        public <F> Struct field(SerializationContext ctx, String name, Endec<F> endec, F value) {
+        public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value) {
             JsonSerializer.this.frame(encoded -> {
                 endec.encode(ctx, JsonSerializer.this, value);
                 this.result.put(name, encoded.require("struct field"));
@@ -179,15 +177,13 @@ public class JsonSerializer extends RecursiveSerializer<JsonElement> implements 
 
     private class Sequence<V> implements Serializer.Sequence<V> {
 
+        private final SerializationContext ctx;
         private final Endec<V> valueEndec;
         private final JsonArray result;
 
-        private final SerializationContext ctx;
-
-        private Sequence(Endec<V> valueEndec, int size, SerializationContext ctx) {
-            this.valueEndec = valueEndec;
-
+        private Sequence(SerializationContext ctx, Endec<V> valueEndec, int size) {
             this.ctx = ctx;
+            this.valueEndec = valueEndec;
 
             if (JsonSerializer.this.prefix != null) {
                 if (JsonSerializer.this.prefix instanceof JsonArray prefixArray) {
@@ -204,7 +200,7 @@ public class JsonSerializer extends RecursiveSerializer<JsonElement> implements 
         @Override
         public void element(V element) {
             JsonSerializer.this.frame(encoded -> {
-                this.valueEndec.encode(ctx, JsonSerializer.this, element);
+                this.valueEndec.encode(this.ctx, JsonSerializer.this, element);
                 this.result.add(encoded.require("sequence element"));
             }, false);
         }

@@ -2,16 +2,15 @@ package io.wispforest.endec.format.edm;
 
 import com.google.common.io.ByteStreams;
 import io.wispforest.endec.*;
-import io.wispforest.endec.data.SerializationContext;
+import io.wispforest.endec.SerializationContext;
 
 import java.io.IOException;
 
 public class EdmEndec implements Endec<EdmElement<?>> {
 
     public static final EdmEndec INSTANCE = new EdmEndec();
-
     public static final Endec<EdmMap> MAP = INSTANCE.xmap(EdmElement::asMap, edmMap -> edmMap);
-    
+
     private EdmEndec() {}
 
     @Override

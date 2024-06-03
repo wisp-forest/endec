@@ -11,8 +11,7 @@ import java.util.function.Consumer;
  * A template class for implementing serializers which produce as result an
  * instance of some recursive data structure (like JSON, NBT or EDM)
  * <p>
- * Check {@link EdmSerializer} or {@link JsonSerializer} for some reference
- * implementations
+ * Check {@link EdmSerializer} for a reference implementation
  */
 public abstract class RecursiveSerializer<T> implements Serializer<T> {
 

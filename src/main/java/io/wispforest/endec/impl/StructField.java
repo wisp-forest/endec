@@ -1,11 +1,10 @@
 package io.wispforest.endec.impl;
 
-
 import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.Serializer;
 import io.wispforest.endec.StructEndec;
-import io.wispforest.endec.data.SerializationContext;
+import io.wispforest.endec.SerializationContext;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
@@ -33,14 +32,14 @@ public sealed class StructField<S, F> permits StructField.Flat {
         this(name, endec, getter, (Supplier<F>) null);
     }
 
-    public void encodeField(Serializer<?> serializer, Serializer.Struct struct, SerializationContext ctx, S instance) {
-        struct.field(ctx, this.name, this.endec, this.getter.apply(instance));
+    public void encodeField(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, S instance) {
+        struct.field(this.name, ctx, this.endec, this.getter.apply(instance));
     }
 
-    public F decodeField(Deserializer<?> deserializer, Deserializer.Struct struct, SerializationContext ctx) {
+    public F decodeField(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct) {
         return this.defaultValueFactory != null
-                ? struct.field(ctx, this.name, this.endec, this.defaultValueFactory.get())
-                : struct.field(ctx, this.name, this.endec);
+                ? struct.field(this.name, ctx, this.endec, this.defaultValueFactory.get())
+                : struct.field(this.name, ctx, this.endec);
     }
 
     public static final class Flat<S, F> extends StructField<S, F> {
@@ -54,12 +53,12 @@ public sealed class StructField<S, F> permits StructField.Flat {
         }
 
         @Override
-        public void encodeField(Serializer<?> serializer, Serializer.Struct struct, SerializationContext ctx, S instance) {
+        public void encodeField(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, S instance) {
             this.endec().encodeStruct(ctx, serializer, struct, this.getter.apply(instance));
         }
 
         @Override
-        public F decodeField(Deserializer<?> deserializer, Deserializer.Struct struct, SerializationContext ctx) {
+        public F decodeField(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct) {
             return this.endec().decodeStruct(ctx, deserializer, struct);
         }
     }

@@ -5,7 +5,7 @@ import io.wispforest.endec.Endec;
 import io.wispforest.endec.Serializer;
 import io.wispforest.endec.StructEndec;
 import io.wispforest.endec.annotations.NullableComponent;
-import io.wispforest.endec.data.SerializationContext;
+import io.wispforest.endec.SerializationContext;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -84,21 +84,18 @@ public final class RecordEndec<R extends Record> implements StructEndec<R> {
         int index = 0;
 
         for (var field : this.fields) {
-            fieldValues[index++] = field.decodeField(deserializer, struct, ctx);
+            fieldValues[index++] = field.decodeField(ctx, deserializer, struct);
         }
 
         try {
             return instanceCreator.newInstance(fieldValues);
         } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
             throw new IllegalStateException("Error while deserializing record", e);
-            //Owo.LOGGER.error("Error while deserializing record", e);
         }
-
-        //return null;
     }
 
     @Override
     public void encodeStruct(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, R instance) {
-        this.fields.forEach(field -> field.encodeField(serializer, struct, ctx, instance));
+        this.fields.forEach(field -> field.encodeField(ctx, serializer, struct, instance));
     }
 }
