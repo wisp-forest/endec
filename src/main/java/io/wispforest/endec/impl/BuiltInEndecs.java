@@ -19,7 +19,7 @@ public final class BuiltInEndecs{
     public static final Endec<BitSet> BITSET = LONG_ARRAY.xmap(BitSet::valueOf, BitSet::toLongArray);
 
     public static final Endec<java.util.UUID> UUID = Endec
-            .ifToken(
+            .ifAttr(
                     SerializationAttributes.HUMAN_READABLE,
                     Endec.STRING.xmap(java.util.UUID::fromString, java.util.UUID::toString)
             ).orElse(
@@ -27,7 +27,7 @@ public final class BuiltInEndecs{
             );
 
     public static final Endec<Date> DATE = Endec
-            .ifToken(
+            .ifAttr(
                     SerializationAttributes.HUMAN_READABLE,
                     Endec.STRING.xmap(s -> Date.from(Instant.parse(s)), date -> date.toInstant().toString())
             ).orElse(

@@ -4,6 +4,7 @@ import io.wispforest.endec.*;
 import io.wispforest.endec.SerializationContext;
 
 import java.util.Optional;
+import java.util.function.Function;
 
 public class ForwardingDeserializer<T> implements Deserializer<T> {
 
@@ -95,8 +96,8 @@ public class ForwardingDeserializer<T> implements Deserializer<T> {
     }
 
     @Override
-    public <V> V tryRead(SerializationContext ctx, Decoder<V> decoder) {
-        return this.delegate.tryRead(ctx, decoder);
+    public <V> V tryRead(Function<Deserializer<T>, V> reader) {
+        return this.delegate.tryRead(reader);
     }
 
     private static class ForwardingSelfDescribedDeserializer<T> extends ForwardingDeserializer<T> implements SelfDescribedDeserializer<T> {

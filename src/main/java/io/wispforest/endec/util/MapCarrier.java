@@ -20,7 +20,7 @@ public interface MapCarrier {
     }
 
     default <T> T getWithErrors(@NotNull KeyedEndec<T> key) {
-        return getWithErrors(SerializationContext.of(), key);
+        return getWithErrors(SerializationContext.empty(), key);
     }
 
     /**
@@ -31,7 +31,7 @@ public interface MapCarrier {
     }
 
     default <T> void put(@NotNull KeyedEndec<T> key, @NotNull T value) {
-        put(SerializationContext.of(), key, value);
+        put(SerializationContext.empty(), key, value);
     }
 
     /**
@@ -65,7 +65,7 @@ public interface MapCarrier {
     }
 
     default <T> T get(@NotNull KeyedEndec<T> key) {
-        return get( SerializationContext.of(), key);
+        return get(SerializationContext.empty(), key);
     }
 
     /**

@@ -362,12 +362,12 @@ public interface Endec<T> {
      * Create a new endec which, if decoding using this endec's {@link #decode(SerializationContext, Deserializer)} fails,
      * instead tries to decode using {@code decodeOnError}
      */
-    default Endec<T> catchErrors(BiFunction<Deserializer<?>, Exception, T> decodeOnError) {
+    default Endec<T> catchErrors(TriFunction<SerializationContext, Deserializer<?>, Exception, T> decodeOnError) {
         return of(this::encode, (ctx, deserializer) -> {
             try {
                 return deserializer.tryRead(deserializer1 -> this.decode(ctx, deserializer1));
             } catch (Exception e) {
-                return decodeOnError.apply(deserializer, e);
+                return decodeOnError.apply(ctx, deserializer, e);
             }
         });
     }
