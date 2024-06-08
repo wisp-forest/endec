@@ -1,6 +1,5 @@
 package io.wispforest.endec;
 
-
 import io.wispforest.endec.util.Endable;
 
 import java.util.Optional;

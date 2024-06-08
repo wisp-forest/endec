@@ -55,7 +55,7 @@ public final class RecordEndec<R extends Record> implements StructEndec<R> {
 
                 canonicalConstructorArgs[i] = component.getType();
             } catch (IllegalAccessException e) {
-                throw new IllegalStateException("Failed to create method handle for record component accessor");
+                throw new IllegalStateException("Failed to create method handle for record component accessor", e);
             }
         }
 
