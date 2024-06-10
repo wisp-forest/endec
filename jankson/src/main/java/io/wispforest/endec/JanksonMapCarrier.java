@@ -1,28 +1,28 @@
 package io.wispforest.endec;
 
-import com.google.gson.JsonObject;
-import io.wispforest.endec.format.json.JsonDeserializer;
-import io.wispforest.endec.format.json.JsonSerializer;
+import blue.endless.jankson.JsonObject;
+import io.wispforest.endec.format.json.JanksonDeserializer;
+import io.wispforest.endec.format.json.JanksonSerializer;
 import io.wispforest.endec.impl.KeyedEndec;
 import io.wispforest.endec.util.MapCarrier;
 import org.jetbrains.annotations.NotNull;
 
-public class JsonMapCarrier implements MapCarrier {
+public class JanksonMapCarrier implements MapCarrier {
 
     private final JsonObject object;
 
-    public JsonMapCarrier(JsonObject object) {
+    public JanksonMapCarrier(JsonObject object) {
         this.object = object;
     }
 
     @Override
     public <T> T getWithErrors(SerializationContext ctx, @NotNull KeyedEndec<T> key) {
-        return this.object.has(key.key()) ? key.endec().decodeFully(ctx, JsonDeserializer::of, this.object.get(key.key())) : key.defaultValue();
+        return this.object.containsKey(key.key()) ? key.endec().decodeFully(ctx, JanksonDeserializer::of, this.object.get(key.key())) : key.defaultValue();
     }
 
     @Override
     public <T> void put(SerializationContext ctx, @NotNull KeyedEndec<T> key, @NotNull T value) {
-        this.object.add(key.key(), key.endec().encodeFully(ctx, JsonSerializer::of, value));
+        this.object.put(key.key(), key.endec().encodeFully(ctx, JanksonSerializer::of, value));
     }
 
     @Override
@@ -32,6 +32,6 @@ public class JsonMapCarrier implements MapCarrier {
 
     @Override
     public <T> boolean has(@NotNull KeyedEndec<T> key) {
-        return this.object.has(key.key());
+        return this.object.containsKey(key.key());
     }
 }

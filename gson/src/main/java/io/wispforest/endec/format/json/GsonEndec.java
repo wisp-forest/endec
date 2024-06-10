@@ -1,22 +1,20 @@
 package io.wispforest.endec.format.json;
 
-import blue.endless.jankson.Jankson;
-import blue.endless.jankson.JsonElement;
-import blue.endless.jankson.api.SyntaxError;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonStreamParser;
 import io.wispforest.endec.*;
 import io.wispforest.endec.SerializationContext;
 
-public final class JsonEndec implements Endec<JsonElement> {
+public final class GsonEndec implements Endec<JsonElement> {
 
-    private static final Jankson JANKSON = new Jankson.Builder().build();
-    public static final JsonEndec INSTANCE = new JsonEndec();
+    public static final GsonEndec INSTANCE = new GsonEndec();
 
-    private JsonEndec() {}
+    private GsonEndec() {}
 
     @Override
     public void encode(SerializationContext ctx, Serializer<?> serializer, JsonElement value) {
         if (serializer instanceof SelfDescribedSerializer<?>) {
-            JsonDeserializer.of(value).readAny(ctx, serializer);
+            GsonDeserializer.of(value).readAny(ctx, serializer);
             return;
         }
 
@@ -26,16 +24,12 @@ public final class JsonEndec implements Endec<JsonElement> {
     @Override
     public JsonElement decode(SerializationContext ctx, Deserializer<?> deserializer) {
         if (deserializer instanceof SelfDescribedDeserializer<?> selfDescribedDeserializer) {
-            var json = JsonSerializer.of();
+            var json = GsonSerializer.of();
             selfDescribedDeserializer.readAny(ctx, json);
 
             return json.result();
         }
 
-        try {
-            return JANKSON.load(deserializer.readString(ctx));
-        } catch (SyntaxError error) {
-            throw new RuntimeException(error);
-        }
+        return new JsonStreamParser(deserializer.readString(ctx)).next();
     }
 }

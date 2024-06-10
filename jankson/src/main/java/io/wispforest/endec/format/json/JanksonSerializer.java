@@ -10,20 +10,20 @@ import io.wispforest.endec.util.RecursiveSerializer;
 
 import java.util.Optional;
 
-public class JsonSerializer extends RecursiveSerializer<JsonElement> implements SelfDescribedSerializer<JsonElement> {
+public class JanksonSerializer extends RecursiveSerializer<JsonElement> implements SelfDescribedSerializer<JsonElement> {
 
     private JsonElement prefix;
 
-    protected JsonSerializer(JsonElement prefix) {
+    protected JanksonSerializer(JsonElement prefix) {
         super(null);
         this.prefix = prefix;
     }
 
-    public static JsonSerializer of(JsonElement prefix) {
-        return new JsonSerializer(prefix);
+    public static JanksonSerializer of(JsonElement prefix) {
+        return new JanksonSerializer(prefix);
     }
 
-    public static JsonSerializer of() {
+    public static JanksonSerializer of() {
         return of(null);
     }
 
@@ -139,12 +139,12 @@ public class JsonSerializer extends RecursiveSerializer<JsonElement> implements 
             this.ctx = ctx;
             this.valueEndec = valueEndec;
 
-            if (JsonSerializer.this.prefix != null) {
-                if (JsonSerializer.this.prefix instanceof JsonObject prefixObject) {
+            if (JanksonSerializer.this.prefix != null) {
+                if (JanksonSerializer.this.prefix instanceof JsonObject prefixObject) {
                     this.result = prefixObject;
-                    JsonSerializer.this.prefix = null;
+                    JanksonSerializer.this.prefix = null;
                 } else {
-                    throw new IllegalStateException("Incompatible prefix of type " + JsonSerializer.this.prefix.getClass().getSimpleName() + " used for JSON map/struct");
+                    throw new IllegalStateException("Incompatible prefix of type " + JanksonSerializer.this.prefix.getClass().getSimpleName() + " used for JSON map/struct");
                 }
             } else {
                 this.result = new JsonObject();
@@ -153,16 +153,16 @@ public class JsonSerializer extends RecursiveSerializer<JsonElement> implements 
 
         @Override
         public void entry(String key, V value) {
-            JsonSerializer.this.frame(encoded -> {
-                this.valueEndec.encode(this.ctx, JsonSerializer.this, value);
+            JanksonSerializer.this.frame(encoded -> {
+                this.valueEndec.encode(this.ctx, JanksonSerializer.this, value);
                 this.result.put(key, encoded.require("map value"));
             }, false);
         }
 
         @Override
         public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value) {
-            JsonSerializer.this.frame(encoded -> {
-                endec.encode(ctx, JsonSerializer.this, value);
+            JanksonSerializer.this.frame(encoded -> {
+                endec.encode(ctx, JanksonSerializer.this, value);
                 this.result.put(name, encoded.require("struct field"));
             }, true);
 
@@ -171,7 +171,7 @@ public class JsonSerializer extends RecursiveSerializer<JsonElement> implements 
 
         @Override
         public void end() {
-            JsonSerializer.this.consume(result);
+            JanksonSerializer.this.consume(result);
         }
     }
 
@@ -185,12 +185,12 @@ public class JsonSerializer extends RecursiveSerializer<JsonElement> implements 
             this.ctx = ctx;
             this.valueEndec = valueEndec;
 
-            if (JsonSerializer.this.prefix != null) {
-                if (JsonSerializer.this.prefix instanceof JsonArray prefixArray) {
+            if (JanksonSerializer.this.prefix != null) {
+                if (JanksonSerializer.this.prefix instanceof JsonArray prefixArray) {
                     this.result = prefixArray;
-                    JsonSerializer.this.prefix = null;
+                    JanksonSerializer.this.prefix = null;
                 } else {
-                    throw new IllegalStateException("Incompatible prefix of type " + JsonSerializer.this.prefix.getClass().getSimpleName() + " used for JSON sequence");
+                    throw new IllegalStateException("Incompatible prefix of type " + JanksonSerializer.this.prefix.getClass().getSimpleName() + " used for JSON sequence");
                 }
             } else {
                 this.result = new JsonArray();
@@ -199,15 +199,15 @@ public class JsonSerializer extends RecursiveSerializer<JsonElement> implements 
 
         @Override
         public void element(V element) {
-            JsonSerializer.this.frame(encoded -> {
-                this.valueEndec.encode(this.ctx, JsonSerializer.this, element);
+            JanksonSerializer.this.frame(encoded -> {
+                this.valueEndec.encode(this.ctx, JanksonSerializer.this, element);
                 this.result.add(encoded.require("sequence element"));
             }, false);
         }
 
         @Override
         public void end() {
-            JsonSerializer.this.consume(result);
+            JanksonSerializer.this.consume(result);
         }
     }
 }
