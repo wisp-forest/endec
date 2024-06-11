@@ -172,8 +172,9 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
 
         @Override
         public V next() {
+            var element = this.elements.next();
             return EdmDeserializer.this.frame(
-                    this.elements::next,
+                    () -> element,
                     () -> this.valueEndec.decode(this.ctx, EdmDeserializer.this),
                     false
             );
@@ -207,7 +208,7 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
 
         @Override
         public java.util.Map.Entry<String, V> next() {
-            var entry = entries.next();
+            var entry = this.entries.next();
             return EdmDeserializer.this.frame(
                     entry::getValue,
                     () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx, EdmDeserializer.this)),

@@ -201,8 +201,9 @@ public class GsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
 
         @Override
         public V next() {
+            var element = this.elements.next();
             return GsonDeserializer.this.frame(
-                    this.elements::next,
+                    () -> element,
                     () -> this.valueEndec.decode(this.ctx, GsonDeserializer.this),
                     false
             );
@@ -236,7 +237,7 @@ public class GsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
 
         @Override
         public java.util.Map.Entry<String, V> next() {
-            var entry = entries.next();
+            var entry = this.entries.next();
             return GsonDeserializer.this.frame(
                     entry::getValue,
                     () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx, GsonDeserializer.this)),

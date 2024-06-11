@@ -205,8 +205,9 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
 
         @Override
         public V next() {
+            var element = this.elements.next();
             return JanksonDeserializer.this.frame(
-                    this.elements::next,
+                    () -> element,
                     () -> this.valueEndec.decode(this.ctx, JanksonDeserializer.this),
                     false
             );
@@ -240,7 +241,7 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
 
         @Override
         public java.util.Map.Entry<String, V> next() {
-            var entry = entries.next();
+            var entry = this.entries.next();
             return JanksonDeserializer.this.frame(
                     entry::getValue,
                     () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx, JanksonDeserializer.this)),
