@@ -11,27 +11,33 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class ReflectiveEndecBuilder {
 
-    public static final ReflectiveEndecBuilder INSTANCE = new ReflectiveEndecBuilder();
+    public static final ReflectiveEndecBuilder SHARED_INSTANCE = new ReflectiveEndecBuilder();
 
     private final Map<Class<?>, Endec<?>> classToEndec = new HashMap<>();
 
+    public ReflectiveEndecBuilder(Consumer<ReflectiveEndecBuilder> defaultsSetup) {
+        defaultsSetup.accept(this);
+        registerDefaults(this);
+    }
+
     public ReflectiveEndecBuilder() {
-        initBase(this);
+        this(reflectiveEndecBuilder -> {});
     }
 
     /**
      * Register {@code endec} to be used for (de)serializing instances of {@code clazz}
      */
     public <T> ReflectiveEndecBuilder register(Endec<T> endec, Class<T> clazz) {
-        if (classToEndec.containsKey(clazz)) {
+        if (this.classToEndec.containsKey(clazz)) {
             throw new IllegalStateException("Class '" + clazz.getName() + "' already has an associated endec");
         }
 
-        classToEndec.put(clazz, endec);
+        this.classToEndec.put(clazz, endec);
         return this;
     }
 
@@ -40,8 +46,7 @@ public class ReflectiveEndecBuilder {
      */
     @SafeVarargs
     public final <T> ReflectiveEndecBuilder register(Endec<T> endec, Class<T>... classes) {
-        for (var clazz : classes) register(endec, clazz);
-
+        for (var clazz : classes) this.register(endec, clazz);
         return this;
     }
 
@@ -54,7 +59,7 @@ public class ReflectiveEndecBuilder {
      */
     @SuppressWarnings("unchecked")
     public Endec<?> get(Type type) {
-        if (type instanceof Class<?> clazz) return get(clazz);
+        if (type instanceof Class<?> clazz) return this.get(clazz);
 
         var parameterized = (ParameterizedType) type;
         var raw = (Class<?>) parameterized.getRawType();
@@ -62,27 +67,27 @@ public class ReflectiveEndecBuilder {
 
         if (raw == Map.class) {
             return typeArgs[0] == String.class
-                    ? get(typeArgs[1]).mapOf()
-                    : Endec.map(get(typeArgs[0]), get(typeArgs[1]));
+                    ? this.get(typeArgs[1]).mapOf()
+                    : Endec.map(this.get(typeArgs[0]), this.get(typeArgs[1]));
         }
 
         if (raw == List.class) {
-            return get(typeArgs[0]).listOf();
+            return this.get(typeArgs[0]).listOf();
         }
 
         if (raw == Set.class) {
             //noinspection rawtypes,Convert2MethodRef
-            return get(typeArgs[0]).listOf().<Set>xmap(
+            return this.get(typeArgs[0]).listOf().<Set>xmap(
                     list -> (Set<?>) new HashSet<>(list),
                     set -> List.copyOf(set)
             );
         }
 
         if (raw == Optional.class) {
-            return get(typeArgs[0]).optionalOf();
+            return this.get(typeArgs[0]).optionalOf();
         }
 
-        return get(raw);
+        return this.get(raw);
     }
 
     /**
@@ -93,7 +98,7 @@ public class ReflectiveEndecBuilder {
      * classes annotated with {@link SealedPolymorphic}
      */
     public <T> Endec<T> get(Class<T> clazz) {
-        var endec = getOrNull(clazz);
+        var endec = this.getOrNull(clazz);
         if (endec == null) {
             throw new IllegalStateException("No endec available for class '" + clazz.getName() + "'");
         }
@@ -105,12 +110,12 @@ public class ReflectiveEndecBuilder {
      * Non-throwing equivalent of {@link #get(Class)}
      */
     public <T> Optional<Endec<T>> maybeGet(Class<T> clazz) {
-        return Optional.ofNullable(getOrNull(clazz));
+        return Optional.ofNullable(this.getOrNull(clazz));
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private <T> @Nullable Endec<T> getOrNull(Class<T> clazz) {
-        Endec<T> serializer = (Endec<T>) classToEndec.get(clazz);
+        Endec<T> serializer = (Endec<T>) this.classToEndec.get(clazz);
 
         if (serializer == null) {
             if (Record.class.isAssignableFrom(clazz)) {
@@ -120,12 +125,12 @@ public class ReflectiveEndecBuilder {
             } else if (clazz.isArray()) {
                 serializer = (Endec<T>) this.createArrayEndec(clazz.getComponentType());
             } else if (clazz.isAnnotationPresent(SealedPolymorphic.class)) {
-                serializer = (Endec<T>) this.createSealedSerializer(clazz);
+                serializer = (Endec<T>) this.createSealedEndec(clazz);
             } else {
                 return null;
             }
 
-            classToEndec.put(clazz, serializer);
+            this.classToEndec.put(clazz, serializer);
         }
 
 
@@ -134,7 +139,7 @@ public class ReflectiveEndecBuilder {
 
     @SuppressWarnings("unchecked")
     private Endec<?> createArrayEndec(Class<?> elementClass) {
-        var elementEndec = (Endec<Object>) get(elementClass);
+        var elementEndec = (Endec<Object>) this.get(elementClass);
 
         return elementEndec.listOf().xmap(list -> {
             int length = list.size();
@@ -153,7 +158,7 @@ public class ReflectiveEndecBuilder {
         });
     }
 
-    private Endec<?> createSealedSerializer(Class<?> commonClass) {
+    private Endec<?> createSealedEndec(Class<?> commonClass) {
         if (!commonClass.isSealed()) {
             throw new IllegalStateException("@SealedPolymorphic class must be sealed");
         }
@@ -193,31 +198,40 @@ public class ReflectiveEndecBuilder {
         return Endec.dispatched(integer -> serializerMap.get(integer.intValue()), instance -> classesMap.getInt(instance.getClass()), Endec.INT);
     }
 
-    private static void initBase(ReflectiveEndecBuilder builder) {
+    @SafeVarargs
+    private <T> ReflectiveEndecBuilder registerIfMissing(Endec<T> endec, Class<T>... classes) {
+        for (var clazz : classes) {
+            this.classToEndec.putIfAbsent(clazz, endec);
+        }
+
+        return this;
+    }
+
+    private static void registerDefaults(ReflectiveEndecBuilder builder) {
 
         // ----------
         // Primitives
         // ----------
 
-        builder.register(Endec.BOOLEAN, Boolean.class, boolean.class)
-                .register(Endec.INT, Integer.class, int.class)
-                .register(Endec.LONG, Long.class, long.class)
-                .register(Endec.FLOAT, Float.class, float.class)
-                .register(Endec.DOUBLE, Double.class, double.class);
+        builder.registerIfMissing(Endec.BOOLEAN, Boolean.class, boolean.class)
+                .registerIfMissing(Endec.INT, Integer.class, int.class)
+                .registerIfMissing(Endec.LONG, Long.class, long.class)
+                .registerIfMissing(Endec.FLOAT, Float.class, float.class)
+                .registerIfMissing(Endec.DOUBLE, Double.class, double.class);
 
-        builder.register(Endec.BYTE, Byte.class, byte.class)
-                .register(Endec.SHORT, Short.class, short.class)
-                .register(Endec.SHORT.xmap(aShort -> (char) aShort.shortValue(), character -> (short) character.charValue()), Character.class, char.class);
+        builder.registerIfMissing(Endec.BYTE, Byte.class, byte.class)
+                .registerIfMissing(Endec.SHORT, Short.class, short.class)
+                .registerIfMissing(Endec.SHORT.xmap(aShort -> (char) aShort.shortValue(), character -> (short) character.charValue()), Character.class, char.class);
 
-        builder.register(Endec.VOID, Void.class);
+        builder.registerIfMissing(Endec.VOID, Void.class);
 
         // ----
         // Misc
         // ----
 
-        builder.register(Endec.STRING, String.class)
-                .register(BuiltInEndecs.UUID, UUID.class)
-                .register(BuiltInEndecs.DATE, Date.class)
-                .register(BuiltInEndecs.BITSET, BitSet.class);
+        builder.registerIfMissing(Endec.STRING, String.class)
+                .registerIfMissing(BuiltInEndecs.UUID, UUID.class)
+                .registerIfMissing(BuiltInEndecs.DATE, Date.class)
+                .registerIfMissing(BuiltInEndecs.BITSET, BitSet.class);
     }
 }

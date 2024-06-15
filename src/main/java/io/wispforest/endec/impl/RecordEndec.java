@@ -28,8 +28,8 @@ public final class RecordEndec<R extends Record> implements StructEndec<R> {
         this.fields = fields;
     }
 
-    public static <R extends Record> RecordEndec<R> create(Class<R> recordClass){
-        return create(ReflectiveEndecBuilder.INSTANCE, recordClass);
+    public static <R extends Record> RecordEndec<R> createShared(Class<R> recordClass){
+        return create(ReflectiveEndecBuilder.SHARED_INSTANCE, recordClass);
     }
 
     /**

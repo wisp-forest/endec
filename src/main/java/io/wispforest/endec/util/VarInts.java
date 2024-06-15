@@ -1,7 +1,9 @@
 package io.wispforest.endec.util;
 
 import it.unimi.dsi.fastutil.bytes.ByteConsumer;
+import org.jetbrains.annotations.ApiStatus;
 
+@ApiStatus.Internal
 public class VarInts {
 
     public static final int SEGMENT_BITS = 127;
