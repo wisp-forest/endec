@@ -109,7 +109,7 @@ public sealed class EdmElement<T> permits EdmMap {
     }
 
     public static EdmElement<byte[]> wrapBytes(byte[] value) {
-        return new EdmElement<>(value, Type.BYTE);
+        return new EdmElement<>(value, Type.BYTES);
     }
 
     public static EdmElement<Optional<EdmElement<?>>> wrapOptional(Optional<EdmElement<?>> value) {
