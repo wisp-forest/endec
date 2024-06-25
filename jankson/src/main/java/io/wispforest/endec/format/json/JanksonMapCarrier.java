@@ -1,8 +1,7 @@
-package io.wispforest.endec;
+package io.wispforest.endec.format.json;
 
 import blue.endless.jankson.JsonObject;
-import io.wispforest.endec.format.json.JanksonDeserializer;
-import io.wispforest.endec.format.json.JanksonSerializer;
+import io.wispforest.endec.SerializationContext;
 import io.wispforest.endec.impl.KeyedEndec;
 import io.wispforest.endec.util.MapCarrier;
 import org.jetbrains.annotations.NotNull;
