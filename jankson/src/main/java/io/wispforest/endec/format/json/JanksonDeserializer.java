@@ -260,11 +260,12 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
 
         @Override
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec) {
-            if (!this.object.containsKey(name)) {
+            var element = this.object.get(name);
+            if (element == null) {
                 throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
             }
             return JanksonDeserializer.this.frame(
-                    () -> this.object.get(name),
+                    () -> element,
                     () -> endec.decode(ctx, JanksonDeserializer.this),
                     true
             );
@@ -272,9 +273,10 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
 
         @Override
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
-            if (!this.object.containsKey(name)) return defaultValue;
+            var element = this.object.get(name);
+            if (element == null) return defaultValue;
             return JanksonDeserializer.this.frame(
-                    () -> this.object.get(name),
+                    () -> element,
                     () -> endec.decode(ctx, JanksonDeserializer.this),
                     true
             );

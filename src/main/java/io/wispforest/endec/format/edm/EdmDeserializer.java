@@ -227,11 +227,12 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
 
         @Override
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec) {
-            if (!this.map.containsKey(name)) {
+            var element = this.map.get(name);
+            if (element == null) {
                 throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
             }
             return EdmDeserializer.this.frame(
-                    () -> this.map.get(name),
+                    () -> element,
                     () -> endec.decode(ctx, EdmDeserializer.this),
                     true
             );
@@ -239,9 +240,10 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
 
         @Override
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
-            if (!this.map.containsKey(name)) return defaultValue;
+            var element = this.map.get(name);
+            if (element == null) return defaultValue;
             return EdmDeserializer.this.frame(
-                    () -> this.map.get(name),
+                    () -> element,
                     () -> endec.decode(ctx, EdmDeserializer.this),
                     true
             );

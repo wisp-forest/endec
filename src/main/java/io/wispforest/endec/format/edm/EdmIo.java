@@ -109,7 +109,7 @@ public class EdmIo {
                     );
                 }
 
-                yield EdmElement.wrapMap(result);
+                yield EdmElement.consumeMap(result);
             }
         };
     }

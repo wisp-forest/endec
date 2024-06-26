@@ -256,11 +256,12 @@ public class GsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
 
         @Override
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec) {
-            if (!this.object.has(name)) {
+            var element = this.object.get(name);
+            if (element == null) {
                 throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
             }
             return GsonDeserializer.this.frame(
-                    () -> this.object.get(name),
+                    () -> element,
                     () -> endec.decode(ctx, GsonDeserializer.this),
                     true
             );
@@ -268,9 +269,10 @@ public class GsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
 
         @Override
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
-            if (!this.object.has(name)) return defaultValue;
+            var element = this.object.get(name);
+            if (element == null) return defaultValue;
             return GsonDeserializer.this.frame(
-                    () -> this.object.get(name),
+                    () -> element,
                     () -> endec.decode(ctx, GsonDeserializer.this),
                     true
             );

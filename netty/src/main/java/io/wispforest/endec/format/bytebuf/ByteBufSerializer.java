@@ -2,6 +2,7 @@ package io.wispforest.endec.format.bytebuf;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
+import io.netty.buffer.Unpooled;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.SerializationContext;
 import io.wispforest.endec.Serializer;
@@ -74,7 +75,8 @@ public class ByteBufSerializer<B extends ByteBuf> implements Serializer<B> {
 
     @Override
     public void writeString(SerializationContext ctx, String value) {
-        this.writeVarInt(ctx, value.length());
+        this.writeVarInt(ctx, ByteBufUtil.utf8Bytes(value));
+
         ByteBufUtil.writeUtf8(this.buffer, value);
     }
 

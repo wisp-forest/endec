@@ -160,7 +160,7 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
 
         @Override
         public void end() {
-            EdmSerializer.this.consume(EdmElement.wrapMap(this.result));
+            EdmSerializer.this.consume(EdmElement.consumeMap(this.result));
         }
     }
 
@@ -184,7 +184,7 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
 
         @Override
         public void end() {
-            EdmSerializer.this.consume(EdmElement.wrapMap(this.result));
+            EdmSerializer.this.consume(EdmElement.consumeMap(this.result));
         }
     }
 }

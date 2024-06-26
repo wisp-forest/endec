@@ -4,6 +4,7 @@ import io.wispforest.endec.impl.StructField;
 
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Marker and template interface for all endecs which serialize structs
@@ -27,6 +28,21 @@ public interface StructEndec<T> extends Endec<T> {
     @Override
     default T decode(SerializationContext ctx, Deserializer<?> deserializer) {
         return this.decodeStruct(ctx, deserializer, deserializer.struct());
+    }
+
+    static <T> StructEndec<T> unit(T instance) {
+        return unit(() -> instance);
+    }
+
+    static <T> StructEndec<T> unit(Supplier<T> instance) {
+        return new StructEndec<>() {
+            @Override
+            public void encodeStruct(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, T value) {}
+            @Override
+            public T decodeStruct(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct) {
+                return instance.get();
+            }
+        };
     }
 
     default <S> StructField<S, T> flatFieldOf(Function<S, T> getter) {
