@@ -2,6 +2,6 @@ module gson_endec {
     requires transitive endec;
     requires com.google.gson;
     requires static org.jetbrains.annotations;
-    exports io.wispforest.endec.format.json;
+    exports io.wispforest.endec.format.gson;
     // other declarations
 }

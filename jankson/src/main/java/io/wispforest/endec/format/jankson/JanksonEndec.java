@@ -1,4 +1,4 @@
-package io.wispforest.endec.format.json;
+package io.wispforest.endec.format.jankson;
 
 import blue.endless.jankson.Jankson;
 import blue.endless.jankson.JsonElement;

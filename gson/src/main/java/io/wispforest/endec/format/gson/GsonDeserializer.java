@@ -1,24 +1,24 @@
-package io.wispforest.endec.format.json;
+package io.wispforest.endec.format.gson;
 
-import blue.endless.jankson.*;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import io.wispforest.endec.*;
-import io.wispforest.endec.SerializationAttributes;
-import io.wispforest.endec.SerializationContext;
 import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
-import java.math.BigDecimal;
 import java.util.Iterator;
 import java.util.Optional;
 
-public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> implements SelfDescribedDeserializer<JsonElement> {
+public class GsonDeserializer extends RecursiveDeserializer<JsonElement> implements SelfDescribedDeserializer<JsonElement> {
 
-    protected JanksonDeserializer(JsonElement serialized) {
+    protected GsonDeserializer(JsonElement serialized) {
         super(serialized);
     }
 
-    public static JanksonDeserializer of(JsonElement serialized) {
-        return new JanksonDeserializer(serialized);
+    public static GsonDeserializer of(JsonElement serialized) {
+        return new GsonDeserializer(serialized);
     }
 
     @Override
@@ -30,36 +30,32 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
 
     @Override
     public byte readByte(SerializationContext ctx) {
-        return readPrimitive(Byte.class);
+        return this.getValue().getAsByte();
     }
 
     @Override
     public short readShort(SerializationContext ctx) {
-        return readPrimitive(Short.class);
+        return this.getValue().getAsShort();
     }
 
     @Override
     public int readInt(SerializationContext ctx) {
-        return readPrimitive(Integer.class);
+        return this.getValue().getAsInt();
     }
 
     @Override
     public long readLong(SerializationContext ctx) {
-        return readPrimitive(Long.class);
+        return this.getValue().getAsLong();
     }
 
     @Override
     public float readFloat(SerializationContext ctx) {
-        return readPrimitive(Float.class);
+        return this.getValue().getAsFloat();
     }
 
     @Override
     public double readDouble(SerializationContext ctx) {
-        return readPrimitive(Double.class);
-    }
-
-    private <T> T readPrimitive(Class<T> clazz){
-        return clazz.cast(((JsonPrimitive) this.getValue()).getValue());
+        return this.getValue().getAsDouble();
     }
 
     // ---
@@ -78,21 +74,21 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
 
     @Override
     public boolean readBoolean(SerializationContext ctx) {
-        return readPrimitive(Boolean.class);
+        return this.getValue().getAsBoolean();
     }
 
     @Override
     public String readString(SerializationContext ctx) {
-        return readPrimitive(String.class);
+        return this.getValue().getAsString();
     }
 
     @Override
     public byte[] readBytes(SerializationContext ctx) {
-        var array = ((JsonArray) this.getValue()).toArray();
+        var array = this.getValue().getAsJsonArray().asList();
 
-        var result = new byte[array.length];
-        for (int i = 0; i < array.length; i++) {
-            result[i] = ((Number) ((JsonPrimitive) array[i]).getValue()).byteValue();
+        var result = new byte[array.size()];
+        for (int i = 0; i < array.size(); i++) {
+            result[i] = array.get(i).getAsByte();
         }
 
         return result;
@@ -101,7 +97,7 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
     @Override
     public <V> Optional<V> readOptional(SerializationContext ctx, Endec<V> endec) {
         var value = this.getValue();
-        return !(value instanceof JsonNull)
+        return !value.isJsonNull()
                 ? Optional.of(endec.decode(ctx, this))
                 : Optional.empty();
     }
@@ -131,25 +127,25 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
     }
 
     private <S> void decodeValue(SerializationContext ctx, Serializer<S> visitor, JsonElement element) {
-        if (element instanceof JsonNull) {
-            visitor.writeOptional(ctx, JanksonEndec.INSTANCE, Optional.empty());
+        if (element.isJsonNull()) {
+            visitor.writeOptional(ctx, GsonEndec.INSTANCE, Optional.empty());
         } else if (element instanceof JsonPrimitive primitive) {
-            if (primitive.getValue() instanceof String s) {
-                visitor.writeString(ctx, s);
-            } else if (primitive.getValue() instanceof Boolean b) {
-                visitor.writeBoolean(ctx, b);
+            if (primitive.isString()) {
+                visitor.writeString(ctx, primitive.getAsString());
+            } else if (primitive.isBoolean()) {
+                visitor.writeBoolean(ctx, primitive.getAsBoolean());
             } else {
-                var value = primitive.asBigDecimal(BigDecimal.ZERO);
+                var value = primitive.getAsBigDecimal();
 
                 try {
                     var asLong = value.longValueExact();
 
                     if ((byte) asLong == asLong) {
-                        visitor.writeByte(ctx, (byte) primitive.getValue());
+                        visitor.writeByte(ctx, element.getAsByte());
                     } else if ((short) asLong == asLong) {
-                        visitor.writeShort(ctx, (short) primitive.getValue());
+                        visitor.writeShort(ctx, element.getAsShort());
                     } else if ((int) asLong == asLong) {
-                        visitor.writeInt(ctx, (int) primitive.getValue());
+                        visitor.writeInt(ctx, element.getAsInt());
                     } else {
                         visitor.writeLong(ctx, asLong);
                     }
@@ -157,7 +153,7 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
                     var asDouble = value.doubleValue();
 
                     if ((float) asDouble == asDouble) {
-                        visitor.writeFloat(ctx, (float) primitive.getValue());
+                        visitor.writeFloat(ctx, element.getAsFloat());
                     } else {
                         visitor.writeDouble(ctx, asDouble);
                     }
@@ -169,7 +165,7 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
             }
         } else if (element instanceof JsonObject object) {
             try (var map = visitor.map(ctx, Endec.<JsonElement>of(this::decodeValue, (ctx1, deserializer) -> null), object.size())) {
-                object.forEach(map::entry);
+                object.asMap().forEach(map::entry);
             }
         } else {
             throw new IllegalArgumentException("Non-standard, unrecognized JsonElement implementation cannot be decoded");
@@ -206,9 +202,9 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
         @Override
         public V next() {
             var element = this.elements.next();
-            return JanksonDeserializer.this.frame(
+            return GsonDeserializer.this.frame(
                     () -> element,
-                    () -> this.valueEndec.decode(this.ctx, JanksonDeserializer.this),
+                    () -> this.valueEndec.decode(this.ctx, GsonDeserializer.this),
                     false
             );
         }
@@ -242,9 +238,9 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
         @Override
         public java.util.Map.Entry<String, V> next() {
             var entry = this.entries.next();
-            return JanksonDeserializer.this.frame(
+            return GsonDeserializer.this.frame(
                     entry::getValue,
-                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx, JanksonDeserializer.this)),
+                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx, GsonDeserializer.this)),
                     false
             );
         }
@@ -264,9 +260,9 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
             if (element == null) {
                 throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
             }
-            return JanksonDeserializer.this.frame(
+            return GsonDeserializer.this.frame(
                     () -> element,
-                    () -> endec.decode(ctx, JanksonDeserializer.this),
+                    () -> endec.decode(ctx, GsonDeserializer.this),
                     true
             );
         }
@@ -275,9 +271,9 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
             var element = this.object.get(name);
             if (element == null) return defaultValue;
-            return JanksonDeserializer.this.frame(
+            return GsonDeserializer.this.frame(
                     () -> element,
-                    () -> endec.decode(ctx, JanksonDeserializer.this),
+                    () -> endec.decode(ctx, GsonDeserializer.this),
                     true
             );
         }

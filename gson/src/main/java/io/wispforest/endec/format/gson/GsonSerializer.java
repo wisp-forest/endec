@@ -1,4 +1,4 @@
-package io.wispforest.endec.format.json;
+package io.wispforest.endec.format.gson;
 
 import com.google.gson.*;
 import io.wispforest.endec.*;
