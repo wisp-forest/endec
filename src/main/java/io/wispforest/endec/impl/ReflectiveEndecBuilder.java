@@ -3,9 +3,9 @@ package io.wispforest.endec.impl;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.SerializationAttributes;
 import io.wispforest.endec.annotations.InnerLookup;
-import io.wispforest.endec.annotations.NullableComponent;
+import io.wispforest.endec.annotations.IsNullable;
 import io.wispforest.endec.annotations.SealedPolymorphic;
-import io.wispforest.endec.annotations.VariableInteger;
+import io.wispforest.endec.annotations.IsVarInt;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import org.jetbrains.annotations.Nullable;
@@ -21,7 +21,8 @@ public class ReflectiveEndecBuilder {
     public static final ReflectiveEndecBuilder SHARED_INSTANCE = new ReflectiveEndecBuilder();
 
     private final Map<Class<?>, Endec<?>> classToEndec = new HashMap<>();
-    private final Map<Class<? extends Annotation>, ReflectiveEndecAdjuster<? extends Annotation>> classToAdjuster = new HashMap<>();
+
+    private final Map<Class<? extends Annotation>, TypedAdjuster<? extends Annotation>> classToTypeAdjuster = new HashMap<>();
 
     public ReflectiveEndecBuilder(Consumer<ReflectiveEndecBuilder> defaultsSetup) {
         defaultsSetup.accept(this);
@@ -54,49 +55,25 @@ public class ReflectiveEndecBuilder {
         return this;
     }
 
-    /**
-     * Register {@code endec} to be used for (de)serializing instances of {@code clazz}
-     */
-    public <A extends Annotation> ReflectiveEndecBuilder registerAdjuster(ReflectiveEndecAdjuster<A> adjuster, Class<A> clazz) {
-        if (this.classToAdjuster.containsKey(clazz)) {
+    public <A extends Annotation> ReflectiveEndecBuilder registerTypeAdjuster(TypedAdjuster<A> adjuster, Class<A> clazz) {
+        if (this.classToTypeAdjuster.containsKey(clazz)) {
             throw new IllegalStateException("Class '" + clazz.getName() + "' already has an associated adjuster");
         }
 
-        this.classToAdjuster.put(clazz, adjuster);
+        this.classToTypeAdjuster.put(clazz, adjuster);
         return this;
     }
 
-    /**
-     * Invoke {@link #register(Endec, Class)} once for each class of {@code classes}
-     */
     @SafeVarargs
-    public final <A extends Annotation> ReflectiveEndecBuilder registerAdjuster(ReflectiveEndecAdjuster<A> adjuster, Class<A>... classes) {
-        for (var clazz : classes) this.registerAdjuster(adjuster, clazz);
+    public final <A extends Annotation> ReflectiveEndecBuilder registerTypeAdjuster(TypedAdjuster<A> adjuster, Class<A>... classes) {
+        for (var clazz : classes) this.registerTypeAdjuster(adjuster, clazz);
         return this;
-    }
-
-    public Endec<?> get(AnnotatedElement element, Type type) {
-        Endec<?> endec = null;
-
-        try {
-            endec = get(type);
-        } catch (IllegalStateException ignore) {}
-
-        endec = adjustEndec(element, endec);
-
-        if (endec == null) {
-            Class<?> clazz = (Class<?>) ((type instanceof Class<?>) ? (type) : ((ParameterizedType) type).getRawType());
-
-            throw new IllegalStateException("No endec available for class '" + clazz.getName() + "'");
-        }
-
-        return endec;
     }
 
     @Nullable
-    private <T> Endec<T> adjustEndec(AnnotatedElement element, @Nullable Endec<T> endec) {
-        for (var clazz : this.classToAdjuster.keySet()) {
-            var adjustedEndec = getAndRead(clazz, element, endec);
+    private <T> Endec<T> adjustEndecWithType(AnnotatedType annotatedType, @Nullable Endec<T> endec) {
+        for (var clazz : this.classToTypeAdjuster.keySet()) {
+            var adjustedEndec = applyTypeAdjusterIfPresent(clazz, annotatedType, endec);
 
             if(adjustedEndec != null) return adjustedEndec;
         }
@@ -105,11 +82,84 @@ public class ReflectiveEndecBuilder {
     }
 
     @Nullable
-    private <A extends Annotation, T> Endec<T> getAndRead(Class<A> annotationClazz, AnnotatedElement element, @Nullable Endec<T> endec) {
-        if(!element.isAnnotationPresent(annotationClazz)) return null;
+    private <A extends Annotation, T> Endec<T> applyTypeAdjusterIfPresent(Class<A> annotationClazz, AnnotatedType annotatedType, @Nullable Endec<T> endec) {
+        if(!annotatedType.isAnnotationPresent(annotationClazz)) return null;
 
-        return ((ReflectiveEndecAdjuster<A>) this.classToAdjuster.get(annotationClazz))
-                .adjustEndec(element, element.getAnnotation(annotationClazz), endec);
+        return ((TypedAdjuster<A>) this.classToTypeAdjuster.get(annotationClazz))
+                .adjustEndec(annotatedType, annotatedType.getAnnotation(annotationClazz), endec);
+    }
+
+    //--
+
+    private AnnotatedType getAnnotatedType(AnnotatedElement annotatedElement) {
+        return switch (annotatedElement) {
+            case Parameter parameter -> parameter.getAnnotatedType();
+            case Field field -> field.getAnnotatedType();
+            case RecordComponent recordComponent -> recordComponent.getAnnotatedType();
+            default -> throw new IllegalStateException("Unable to find the annotated type for the given Annotated Element: [Element: " + annotatedElement + "]");
+        };
+    }
+
+    private Class<?> getBaseType(AnnotatedElement annotatedElement) {
+        return switch (annotatedElement) {
+            case Parameter parameter -> parameter.getType();
+            case Field field -> field.getType();
+            case RecordComponent recordComponent -> recordComponent.getType();
+            default -> throw new IllegalStateException("Unable to find the annotated type for the given Annotated Element: [Element: " + annotatedElement + "]");
+        };
+    }
+
+    public Endec<?> getAnnotated(AnnotatedElement annotatedElement) {
+        return getAnnotated(getAnnotatedType(annotatedElement), getBaseType(annotatedElement), annotatedElement);
+    }
+
+    public Endec<?> getAnnotated(AnnotatedType annotatedType) {
+        return getAnnotated(annotatedType, null,null);
+    }
+
+    private Endec<?> getAnnotated(AnnotatedType annotatedType, @Nullable Class<?> baseType, @Nullable AnnotatedElement annotatedElement) {
+        var type = annotatedType.getType();
+
+        Endec<?> endec;
+
+        if(annotatedType instanceof AnnotatedArrayType annotatedArrayType) {
+            Class<?> arrayClazz = (type instanceof GenericArrayType) ? baseType : (Class<?>) type;
+
+            if(arrayClazz == null) throw new IllegalStateException("Unable to get the required base Array class to get the component type!");
+
+            endec = createArrayEndec(arrayClazz.componentType(), annotatedArrayType.getAnnotatedGenericComponentType());
+        } else if (type instanceof Class<?> clazz) {
+            endec = getOrNull(clazz);
+        } else {
+            var annotatedTypeArgs = ((AnnotatedParameterizedType) annotatedType).getAnnotatedActualTypeArguments();
+
+            var annotatedType0 = annotatedTypeArgs[0];
+
+            var raw = ((ParameterizedType) type).getRawType();
+
+            endec = switch (raw) {
+                case Class<?> clazz when clazz.equals(Map.class) -> {
+                    var annotatedType1 = annotatedTypeArgs[1];
+
+                    yield annotatedType0.getType() == String.class
+                            ? this.getAnnotated(annotatedType1).mapOf()
+                            : Endec.map(this.getAnnotated(annotatedType0), this.getAnnotated(annotatedType1));
+                }
+                case Class<?> clazz when clazz.equals(List.class) -> this.getAnnotated(annotatedType0).listOf();
+                case Class<?> clazz when clazz.equals(Set.class) -> this.getAnnotated(annotatedType0).setOf();
+                case Class<?> clazz when clazz.equals(Optional.class) -> this.getAnnotated(annotatedType0).optionalOf();
+                case Class<?> clazz -> this.getOrNull(clazz);
+                default -> throw new IllegalStateException("Unexpected value: " + raw);
+            };
+        }
+
+        endec = adjustEndecWithType(annotatedType, endec);
+
+        if (endec == null) {
+            throw new IllegalStateException("No Endec available for the given type '" + type.toString() + "'");
+        }
+
+        return endec;
     }
 
     /**
@@ -185,7 +235,7 @@ public class ReflectiveEndecBuilder {
             } else if (clazz.isEnum()) {
                 serializer = (Endec<T>) Endec.forEnum((Class<? extends Enum>) clazz);
             } else if (clazz.isArray()) {
-                serializer = (Endec<T>) this.createArrayEndec(clazz.getComponentType());
+                serializer = (Endec<T>) this.createArrayEndec(clazz.getComponentType(), null);
             } else if (clazz.isAnnotationPresent(SealedPolymorphic.class)) {
                 serializer = (Endec<T>) this.createSealedEndec(clazz);
             } else {
@@ -200,12 +250,12 @@ public class ReflectiveEndecBuilder {
     }
 
     @SuppressWarnings("unchecked")
-    private Endec<?> createArrayEndec(Class<?> elementClass) {
-        var elementEndec = (Endec<Object>) this.get(elementClass);
+    private Endec<?> createArrayEndec(Class<?> componentType, @Nullable AnnotatedType genericComponentType) {
+        var elementEndec = (Endec<Object>) ((genericComponentType == null) ? this.get(componentType) : this.getAnnotated(genericComponentType));
 
         return elementEndec.listOf().xmap(list -> {
             int length = list.size();
-            var array = Array.newInstance(elementClass, length);
+            var array = Array.newInstance(componentType, length);
             for (int i = 0; i < length; i++) {
                 Array.set(array, i, list.get(i));
             }
@@ -230,10 +280,10 @@ public class ReflectiveEndecBuilder {
         for (int i = 0; i < permittedSubclasses.size(); i++) {
             var clazz = permittedSubclasses.get(i);
 
-            if (clazz.isSealed()) {
-                for (var subclass : clazz.getPermittedSubclasses()) {
-                    if (!permittedSubclasses.contains(subclass)) permittedSubclasses.add(subclass);
-                }
+            if (!clazz.isSealed()) continue;
+
+            for (var subclass : clazz.getPermittedSubclasses()) {
+                if (!permittedSubclasses.contains(subclass)) permittedSubclasses.add(subclass);
             }
         }
 
@@ -262,9 +312,7 @@ public class ReflectiveEndecBuilder {
 
     @SafeVarargs
     private <T> ReflectiveEndecBuilder registerIfMissing(Endec<T> endec, Class<T>... classes) {
-        for (var clazz : classes) {
-            this.classToEndec.putIfAbsent(clazz, endec);
-        }
+        for (var clazz : classes) this.classToEndec.putIfAbsent(clazz, endec);
 
         return this;
     }
@@ -298,32 +346,24 @@ public class ReflectiveEndecBuilder {
     }
 
     private static void registerDefaultAdjusters(ReflectiveEndecBuilder builder) {
-        builder.registerAdjuster(
-                new ReflectiveEndecAdjuster<>() {
+        builder.registerTypeAdjuster(
+                new TypedAdjuster<>() {
                     @Override
                     @Nullable
-                    public <T> Endec<T> adjustEndec(AnnotatedElement element, NullableComponent annotationInst, Endec<T> base) {
-                        Class<?> type;
+                    public <T> Endec<T> adjustEndec(AnnotatedType annotatedType, IsNullable annotationInst, Endec<T> base) {
+                        Type type = annotatedType.getType();
 
-                        if(element instanceof Field field) {
-                            type = field.getType();
-                        } else if(element instanceof RecordComponent recordComponent) {
-                            type = recordComponent.getType();
-                        } else {
-                            return null;
-                        }
-
-                        if(type.isPrimitive()) throw new IllegalStateException("Unable to create nullable Endec variant of a primitive type! [Element: " + element.toString() + "]");
+                        if(type instanceof Class<?> clazz && clazz.isPrimitive()) throw new IllegalStateException("Unable to create nullable Endec variant of a primitive type! [Element: " + annotatedType.toString() + "]");
 
                         return base.nullableOf();
                     }
-                }, NullableComponent.class);
+                }, IsNullable.class);
 
-        builder.registerAdjuster(
-                new ReflectiveEndecAdjuster<>() {
+        builder.registerTypeAdjuster(
+                new TypedAdjuster<>() {
                     @Override
                     @Nullable
-                    public <T> Endec<T> adjustEndec(AnnotatedElement element, VariableInteger annotationInst, Endec<T> base) {
+                    public <T> Endec<T> adjustEndec(AnnotatedType annotatedType, IsVarInt annotationInst, Endec<T> base) {
                         if(base == Endec.INT) {
                             if(annotationInst.ignoreHumanReadable()) return (Endec<T>) Endec.VAR_INT;
 
@@ -336,9 +376,10 @@ public class ReflectiveEndecBuilder {
                                     .orElse((Endec<T>) Endec.VAR_LONG);
                         }
 
-                        return null;
+                        throw new IllegalStateException("Unable to handle the given type passed!");
                     }
-                }, VariableInteger.class);
+                }, IsVarInt.class);
+
 
     }
 }

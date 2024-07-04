@@ -12,8 +12,8 @@ import java.lang.annotation.Target;
  * should be treated as variable variant of the {@link Integer} or {@link Long} type in serialization
  * meaning such will use either the {@link Endec#VAR_INT} or {@link Endec#VAR_LONG}.
  */
-@Target({ElementType.RECORD_COMPONENT, ElementType.FIELD})
+@Target({ElementType.TYPE_USE})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface VariableInteger {
+public @interface IsVarInt {
     boolean ignoreHumanReadable() default false;
 }

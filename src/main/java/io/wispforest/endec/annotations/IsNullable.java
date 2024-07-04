@@ -10,6 +10,6 @@ import java.lang.annotation.Target;
  * should be treated as nullable in serialization. Importantly, <b>this changes the serialized type of this
  * component to an optional</b>
  */
-@Target({ElementType.RECORD_COMPONENT, ElementType.FIELD})
+@Target({ElementType.TYPE_USE})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface NullableComponent {}
+public @interface IsNullable {}
