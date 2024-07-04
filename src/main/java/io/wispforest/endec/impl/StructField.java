@@ -33,13 +33,21 @@ public sealed class StructField<S, F> permits StructField.Flat {
     }
 
     public void encodeField(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, S instance) {
-        struct.field(this.name, ctx, this.endec, this.getter.apply(instance));
+        try {
+            struct.field(this.name, ctx, this.endec, this.getter.apply(instance));
+        } catch (Exception e) {
+            throw new StructFieldException("Exception occurred when encoding a given StructField: [Field: " + this.name + "]", e);
+        }
     }
 
     public F decodeField(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct) {
-        return this.defaultValueFactory != null
-                ? struct.field(this.name, ctx, this.endec, this.defaultValueFactory.get())
-                : struct.field(this.name, ctx, this.endec);
+        try {
+            return this.defaultValueFactory != null
+                    ? struct.field(this.name, ctx, this.endec, this.defaultValueFactory.get())
+                    : struct.field(this.name, ctx, this.endec);
+        } catch (Exception e) {
+            throw new StructFieldException("Exception occurred when decoding a given StructField: [Field: " + this.name + "]", e);
+        }
     }
 
     public static final class Flat<S, F> extends StructField<S, F> {
@@ -60,6 +68,12 @@ public sealed class StructField<S, F> permits StructField.Flat {
         @Override
         public F decodeField(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct) {
             return this.endec().decodeStruct(ctx, deserializer, struct);
+        }
+    }
+
+    public static class StructFieldException extends IllegalStateException {
+        public StructFieldException(String message, Throwable cause) {
+            super(message, cause);
         }
     }
 }
