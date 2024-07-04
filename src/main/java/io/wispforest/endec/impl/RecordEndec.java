@@ -48,10 +48,9 @@ public final class RecordEndec<R extends Record> implements StructEndec<R> {
                 var component = recordClass.getRecordComponents()[i];
                 var handle = lookup.unreflect(component.getAccessor());
 
-                var endec = (Endec<Object>) builder.get(component.getGenericType());
-                if(component.isAnnotationPresent(NullableComponent.class)) endec = endec.nullableOf();
-
-                fields.add(new StructField<>(component.getName(), endec, instance -> getRecordEntry(instance, handle)));
+                fields.add(new StructField<>(component.getName(),
+                        (Endec<Object>) builder.get(component, component.getGenericType()),
+                        instance -> getRecordEntry(instance, handle)));
 
                 canonicalConstructorArgs[i] = component.getType();
             } catch (IllegalAccessException e) {

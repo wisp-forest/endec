@@ -1,15 +1,17 @@
 package io.wispforest.endec.impl;
 
 import io.wispforest.endec.Endec;
+import io.wispforest.endec.SerializationAttributes;
+import io.wispforest.endec.annotations.InnerLookup;
+import io.wispforest.endec.annotations.NullableComponent;
 import io.wispforest.endec.annotations.SealedPolymorphic;
+import io.wispforest.endec.annotations.VariableInteger;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -19,10 +21,12 @@ public class ReflectiveEndecBuilder {
     public static final ReflectiveEndecBuilder SHARED_INSTANCE = new ReflectiveEndecBuilder();
 
     private final Map<Class<?>, Endec<?>> classToEndec = new HashMap<>();
+    private final Map<Class<? extends Annotation>, ReflectiveEndecAdjuster<? extends Annotation>> classToAdjuster = new HashMap<>();
 
     public ReflectiveEndecBuilder(Consumer<ReflectiveEndecBuilder> defaultsSetup) {
         defaultsSetup.accept(this);
         registerDefaults(this);
+        registerDefaultAdjusters(this);
     }
 
     public ReflectiveEndecBuilder() {
@@ -48,6 +52,64 @@ public class ReflectiveEndecBuilder {
     public final <T> ReflectiveEndecBuilder register(Endec<T> endec, Class<T>... classes) {
         for (var clazz : classes) this.register(endec, clazz);
         return this;
+    }
+
+    /**
+     * Register {@code endec} to be used for (de)serializing instances of {@code clazz}
+     */
+    public <A extends Annotation> ReflectiveEndecBuilder registerAdjuster(ReflectiveEndecAdjuster<A> adjuster, Class<A> clazz) {
+        if (this.classToAdjuster.containsKey(clazz)) {
+            throw new IllegalStateException("Class '" + clazz.getName() + "' already has an associated adjuster");
+        }
+
+        this.classToAdjuster.put(clazz, adjuster);
+        return this;
+    }
+
+    /**
+     * Invoke {@link #register(Endec, Class)} once for each class of {@code classes}
+     */
+    @SafeVarargs
+    public final <A extends Annotation> ReflectiveEndecBuilder registerAdjuster(ReflectiveEndecAdjuster<A> adjuster, Class<A>... classes) {
+        for (var clazz : classes) this.registerAdjuster(adjuster, clazz);
+        return this;
+    }
+
+    public Endec<?> get(AnnotatedElement element, Type type) {
+        Endec<?> endec = null;
+
+        try {
+            endec = get(type);
+        } catch (IllegalStateException ignore) {}
+
+        endec = adjustEndec(element, endec);
+
+        if (endec == null) {
+            Class<?> clazz = (Class<?>) ((type instanceof Class<?>) ? (type) : ((ParameterizedType) type).getRawType());
+
+            throw new IllegalStateException("No endec available for class '" + clazz.getName() + "'");
+        }
+
+        return endec;
+    }
+
+    @Nullable
+    private <T> Endec<T> adjustEndec(AnnotatedElement element, @Nullable Endec<T> endec) {
+        for (var clazz : this.classToAdjuster.keySet()) {
+            var adjustedEndec = getAndRead(clazz, element, endec);
+
+            if(adjustedEndec != null) return adjustedEndec;
+        }
+
+        return endec;
+    }
+
+    @Nullable
+    private <A extends Annotation, T> Endec<T> getAndRead(Class<A> annotationClazz, AnnotatedElement element, @Nullable Endec<T> endec) {
+        if(!element.isAnnotationPresent(annotationClazz)) return null;
+
+        return ((ReflectiveEndecAdjuster<A>) this.classToAdjuster.get(annotationClazz))
+                .adjustEndec(element, element.getAnnotation(annotationClazz), endec);
     }
 
     /**
@@ -233,5 +295,50 @@ public class ReflectiveEndecBuilder {
                 .registerIfMissing(BuiltInEndecs.UUID, UUID.class)
                 .registerIfMissing(BuiltInEndecs.DATE, Date.class)
                 .registerIfMissing(BuiltInEndecs.BITSET, BitSet.class);
+    }
+
+    private static void registerDefaultAdjusters(ReflectiveEndecBuilder builder) {
+        builder.registerAdjuster(
+                new ReflectiveEndecAdjuster<>() {
+                    @Override
+                    @Nullable
+                    public <T> Endec<T> adjustEndec(AnnotatedElement element, NullableComponent annotationInst, Endec<T> base) {
+                        Class<?> type;
+
+                        if(element instanceof Field field) {
+                            type = field.getType();
+                        } else if(element instanceof RecordComponent recordComponent) {
+                            type = recordComponent.getType();
+                        } else {
+                            return null;
+                        }
+
+                        if(type.isPrimitive()) throw new IllegalStateException("Unable to create nullable Endec variant of a primitive type! [Element: " + element.toString() + "]");
+
+                        return base.nullableOf();
+                    }
+                }, NullableComponent.class);
+
+        builder.registerAdjuster(
+                new ReflectiveEndecAdjuster<>() {
+                    @Override
+                    @Nullable
+                    public <T> Endec<T> adjustEndec(AnnotatedElement element, VariableInteger annotationInst, Endec<T> base) {
+                        if(base == Endec.INT) {
+                            if(annotationInst.ignoreHumanReadable()) return (Endec<T>) Endec.VAR_INT;
+
+                            return Endec.ifAttr(SerializationAttributes.HUMAN_READABLE, base)
+                                    .orElse((Endec<T>) Endec.VAR_INT);
+                        } else if (base == Endec.LONG) {
+                            if(annotationInst.ignoreHumanReadable()) return (Endec<T>) Endec.VAR_LONG;
+
+                            return Endec.ifAttr(SerializationAttributes.HUMAN_READABLE, base)
+                                    .orElse((Endec<T>) Endec.VAR_LONG);
+                        }
+
+                        return null;
+                    }
+                }, VariableInteger.class);
+
     }
 }
