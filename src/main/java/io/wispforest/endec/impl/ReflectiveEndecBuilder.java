@@ -366,12 +366,14 @@ public class ReflectiveEndecBuilder {
                     @Override
                     @Nullable
                     public <T> Endec<T> adjustEndec(AnnotatedType annotatedType, IsVarInt annotationInst, Endec<T> base) {
-                        if(base == Endec.INT) {
+                        Type type = annotatedType.getType();
+
+                        if(type.equals(int.class) || type.equals(Integer.class)) {
                             if(annotationInst.ignoreHumanReadable()) return (Endec<T>) Endec.VAR_INT;
 
                             return Endec.ifAttr(SerializationAttributes.HUMAN_READABLE, base)
                                     .orElse((Endec<T>) Endec.VAR_INT);
-                        } else if (base == Endec.LONG) {
+                        } else if (type.equals(long.class) || type.equals(Long.class)) {
                             if(annotationInst.ignoreHumanReadable()) return (Endec<T>) Endec.VAR_LONG;
 
                             return Endec.ifAttr(SerializationAttributes.HUMAN_READABLE, base)
