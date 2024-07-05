@@ -251,6 +251,8 @@ public class ReflectiveEndecBuilder {
 
     @SuppressWarnings("unchecked")
     private Endec<?> createArrayEndec(Class<?> componentType, @Nullable AnnotatedType genericComponentType) {
+        if(componentType.equals(byte.class) || componentType.equals(Byte.class)) return Endec.BYTES;
+
         var elementEndec = (Endec<Object>) ((genericComponentType == null) ? this.get(componentType) : this.getAnnotated(genericComponentType));
 
         return elementEndec.listOf().xmap(list -> {
