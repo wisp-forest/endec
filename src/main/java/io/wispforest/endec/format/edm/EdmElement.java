@@ -8,6 +8,8 @@ import java.util.stream.Collectors;
 
 public sealed class EdmElement<T> permits EdmMap {
 
+    public static final EdmElement<Optional<EdmElement<?>>> EMPTY = new EdmElement<>(Optional.empty(), Type.OPTIONAL);
+
     private final T value;
     private final Type type;
 
@@ -110,6 +112,8 @@ public sealed class EdmElement<T> permits EdmMap {
     }
 
     public static EdmElement<Optional<EdmElement<?>>> wrapOptional(Optional<EdmElement<?>> value) {
+        if(value.isEmpty()) return EdmElement.EMPTY;
+
         return new EdmElement<>(value, Type.OPTIONAL);
     }
 
