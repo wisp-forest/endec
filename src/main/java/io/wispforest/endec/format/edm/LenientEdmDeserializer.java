@@ -1,8 +1,13 @@
 package io.wispforest.endec.format.edm;
 
+import com.google.common.io.ByteStreams;
+import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.SerializationContext;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 public class LenientEdmDeserializer extends EdmDeserializer {
@@ -60,7 +65,6 @@ public class LenientEdmDeserializer extends EdmDeserializer {
         return super.readBoolean(ctx);
     }
 
-
     @Override
     public <V> Optional<V> readOptional(SerializationContext ctx, Endec<V> endec) {
         var edmElement = this.getValue();
@@ -72,5 +76,26 @@ public class LenientEdmDeserializer extends EdmDeserializer {
         } else {
             return Optional.of(endec.decode(ctx, this));
         }
+    }
+
+    //--
+
+    @Override
+    public <E> Deserializer.Sequence<E> sequence(SerializationContext ctx, Endec<E> elementEndec) {
+        var value = this.getValue().value();
+
+        List<EdmElement<?>> list;
+
+        if(value instanceof byte[] array) {
+            list = new ArrayList<>();
+
+            for (byte b : array) list.add(EdmElement.wrapByte(b));
+        } else if(value instanceof List){
+            list = this.getValue().cast();
+        } else {
+            throw new IllegalStateException("Unable to handle the given value for sequence within LenientEdmDeserializer!");
+        }
+
+        return new Sequence<>(ctx, elementEndec, list);
     }
 }

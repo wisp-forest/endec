@@ -145,14 +145,14 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
 
     // ---
 
-    private class Sequence<V> implements Deserializer.Sequence<V> {
+    protected final class Sequence<V> implements Deserializer.Sequence<V> {
 
         private final SerializationContext ctx;
         private final Endec<V> valueEndec;
         private final Iterator<EdmElement<?>> elements;
         private final int size;
 
-        private Sequence(SerializationContext ctx, Endec<V> valueEndec, List<EdmElement<?>> elements) {
+        Sequence(SerializationContext ctx, Endec<V> valueEndec, List<EdmElement<?>> elements) {
             this.ctx = ctx;
             this.valueEndec = valueEndec;
 
