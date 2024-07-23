@@ -4,7 +4,6 @@ import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.Serializer;
 import io.wispforest.endec.StructEndec;
-import io.wispforest.endec.annotations.NullableComponent;
 import io.wispforest.endec.SerializationContext;
 
 import java.lang.invoke.MethodHandle;
@@ -48,10 +47,9 @@ public final class RecordEndec<R extends Record> implements StructEndec<R> {
                 var component = recordClass.getRecordComponents()[i];
                 var handle = lookup.unreflect(component.getAccessor());
 
-                var endec = (Endec<Object>) builder.get(component.getGenericType());
-                if(component.isAnnotationPresent(NullableComponent.class)) endec = endec.nullableOf();
-
-                fields.add(new StructField<>(component.getName(), endec, instance -> getRecordEntry(instance, handle)));
+                fields.add(new StructField<>(component.getName(),
+                        (Endec<Object>) builder.getAnnotated(component),
+                        instance -> getRecordEntry(instance, handle)));
 
                 canonicalConstructorArgs[i] = component.getType();
             } catch (IllegalAccessException e) {
