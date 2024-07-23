@@ -13,7 +13,7 @@ allprojects {
     this.version = project.property("version") as String
 
     base {
-        var baseName = project.property("archives_base_name") as String
+        val baseName = project.property("archives_base_name") as String
 
         this.archivesName.set(if (baseName.equals("endec")) baseName else "endec.${baseName}")
     }
@@ -29,7 +29,7 @@ allprojects {
         implementation("com.google.guava:guava:33.0.0-jre")
     }
 
-    var targetJavaVersion = 21
+    val targetJavaVersion = 17
     tasks.withType<JavaCompile>().configureEach {
         // ensure that the encoding is set to UTF-8, no matter what the system default is
         // this fixes some edge cases with special characters not displaying correctly
