@@ -68,6 +68,11 @@ public interface MapCarrier {
         return get(SerializationContext.empty(), key);
     }
 
+
+    default <T> void putIfNotNull(@NotNull KeyedEndec<T> key, @Nullable T value) {
+        putIfNotNull(SerializationContext.empty(), key, value);
+    }
+
     /**
      * If {@code value} is not {@code null}, store it under {@code key} in this
      * object's associated map
@@ -75,6 +80,10 @@ public interface MapCarrier {
     default <T> void putIfNotNull(SerializationContext ctx, @NotNull KeyedEndec<T> key, @Nullable T value) {
         if (value == null) return;
         this.put(ctx, key, value);
+    }
+
+    default <T> void copy(@NotNull KeyedEndec<T> key, @NotNull MapCarrier other) {
+        copy(SerializationContext.empty(), key, other);
     }
 
     /**
@@ -87,20 +96,46 @@ public interface MapCarrier {
         other.put(ctx, key, this.get(ctx, key));
     }
 
+    default <T> void copyIfPresent(@NotNull KeyedEndec<T> key, @NotNull MapCarrier other) {
+        copyIfPresent(SerializationContext.empty(), key, other);
+    }
+
     /**
      * Like {@link #copy(SerializationContext, KeyedEndec, MapCarrier)}, but only if this object's associated map
      * has a value stored under {@code key}
      */
-    default <T> void copyIfPresent(@NotNull KeyedEndec<T> key, SerializationContext ctx, @NotNull MapCarrier other) {
+    default <T> void copyIfPresent(SerializationContext ctx, @NotNull KeyedEndec<T> key, @NotNull MapCarrier other) {
         if (!this.has(key)) return;
         this.copy(ctx, key, other);
+    }
+
+    default <T> void mutate(@NotNull KeyedEndec<T> key, @NotNull Function<T, T> mutator) {
+        mutate(SerializationContext.empty(), key, mutator);
     }
 
     /**
      * Get the value stored under {@code key} in this object's associated map, apply
      * {@code mutator} to it and store the result under {@code key}
      */
-    default <T> void mutate(@NotNull KeyedEndec<T> key, SerializationContext ctx, @NotNull Function<T, T> mutator) {
+    default <T> void mutate(SerializationContext ctx, @NotNull KeyedEndec<T> key, @NotNull Function<T, T> mutator) {
         this.put(ctx, key, mutator.apply(this.get(ctx, key)));
+    }
+
+    //--
+
+    /**
+     * @deprecated Use {@link #copyIfPresent(SerializationContext, KeyedEndec, MapCarrier)} instead!
+     */
+    @Deprecated(forRemoval = true)
+    default <T> void copyIfPresent(@NotNull KeyedEndec<T> key, SerializationContext ctx, @NotNull MapCarrier other) {
+        copyIfPresent(ctx, key, other);
+    }
+
+    /**
+     * @deprecated Use {@link #mutate(SerializationContext, KeyedEndec, Function)} instead!
+     */
+    @Deprecated(forRemoval = true)
+    default <T> void mutate(@NotNull KeyedEndec<T> key, SerializationContext ctx, @NotNull Function<T, T> mutator) {
+        mutate(ctx, key, mutator);
     }
 }
