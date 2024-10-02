@@ -1,8 +1,12 @@
 package io.wispforest.endec.impl;
 
 import io.wispforest.endec.Endec;
+import io.wispforest.endec.SerializationAttributes;
 import io.wispforest.endec.annotations.SealedPolymorphic;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Reference2IntMap;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import org.jetbrains.annotations.Nullable;
 
@@ -184,7 +188,9 @@ public class ReflectiveEndecBuilder {
         permittedSubclasses.sort(Comparator.comparing(Class::getName));
 
         var serializerMap = new Int2ObjectOpenHashMap<Endec<?>>();
+
         var classesMap = new Reference2IntOpenHashMap<Class<?>>();
+        var namedMap = new Object2IntOpenHashMap<String>();
 
         classesMap.defaultReturnValue(-1);
 
@@ -192,10 +198,34 @@ public class ReflectiveEndecBuilder {
             Class<?> klass = permittedSubclasses.get(i);
 
             serializerMap.put(i, this.get(klass));
+
             classesMap.put(klass, i);
+
+            if(namedMap.containsKey(klass.getSimpleName())) {
+                var existingIndex = namedMap.getInt(klass.getSimpleName());
+
+                Class<?> existingKlass = null;
+
+                for (var classEntry : classesMap.reference2IntEntrySet()) {
+                    if (classEntry.getIntValue() == existingIndex) {
+                        existingKlass = classEntry.getKey();
+
+                        break;
+                    }
+                }
+
+                throw new IllegalStateException("Unable to handled the given set of sealed class as two or more class share the same name! [Class1: " + existingKlass.getName() + ", Class2: " + klass.getName() + "]");
+            }
+
+            namedMap.put(klass.getSimpleName(), i);
         }
 
-        return Endec.dispatched(integer -> serializerMap.get(integer.intValue()), instance -> classesMap.getInt(instance.getClass()), Endec.INT);
+        return Endec.<Object>ifAttr(
+                        SerializationAttributes.HUMAN_READABLE,
+                        Endec.dispatched(name -> serializerMap.get(namedMap.getInt(name)), instance -> instance.getClass().getName(), Endec.STRING)
+                ).orElse(
+                        Endec.dispatched(integer -> serializerMap.get(integer.intValue()), instance -> classesMap.getInt(instance.getClass()), Endec.INT)
+                );
     }
 
     @SafeVarargs
