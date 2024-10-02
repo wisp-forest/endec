@@ -3,6 +3,7 @@ package io.wispforest.endec.format.data;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.Serializer;
 import io.wispforest.endec.SerializationContext;
+import io.wispforest.endec.impl.StructFieldException;
 import io.wispforest.endec.util.VarInts;
 
 import java.io.DataOutput;
@@ -150,8 +151,12 @@ public class DataOutputSerializer<D extends DataOutput> implements Serializer<D>
 
         @Override
         public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value) {
-            endec.encode(ctx, DataOutputSerializer.this, value);
-            return this;
+            try {
+                endec.encode(ctx, DataOutputSerializer.this, value);
+                return this;
+            } catch (Exception e) {
+                throw StructFieldException.of(name, e, true);
+            }
         }
 
         @Override

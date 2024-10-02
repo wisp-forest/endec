@@ -6,6 +6,7 @@ import io.wispforest.endec.SerializationAttributes;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.Serializer;
 import io.wispforest.endec.SerializationContext;
+import io.wispforest.endec.impl.StructFieldException;
 import io.wispforest.endec.util.RecursiveSerializer;
 
 import java.util.Optional;
@@ -161,12 +162,15 @@ public class JanksonSerializer extends RecursiveSerializer<JsonElement> implemen
 
         @Override
         public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value) {
-            JanksonSerializer.this.frame(encoded -> {
-                endec.encode(ctx, JanksonSerializer.this, value);
-                this.result.put(name, encoded.require("struct field"));
-            }, true);
-
-            return this;
+            try {
+                JanksonSerializer.this.frame(encoded -> {
+                    endec.encode(ctx, JanksonSerializer.this, value);
+                    this.result.put(name, encoded.require("struct field"));
+                }, true);
+                return this;
+            } catch (Exception e) {
+                throw StructFieldException.of(name, e, true);
+            }
         }
 
         @Override

@@ -3,6 +3,7 @@ package io.wispforest.endec.format.data;
 import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.SerializationContext;
+import io.wispforest.endec.impl.StructFieldException;
 import io.wispforest.endec.util.VarInts;
 import org.jetbrains.annotations.Nullable;
 
@@ -189,12 +190,16 @@ public class DataInputDeserializer implements Deserializer<DataInput> {
 
         @Override
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec) {
-            return endec.decode(ctx, DataInputDeserializer.this);
+            return this.field(name, ctx, endec, null);
         }
 
         @Override
-        public <F> @Nullable F field(@Nullable String field, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
-            return endec.decode(ctx, DataInputDeserializer.this);
+        public <F> @Nullable F field(@Nullable String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
+            try {
+                return endec.decode(ctx, DataInputDeserializer.this);
+            } catch (Exception e) {
+                throw StructFieldException.of(name, e, false);
+            }
         }
     }
 

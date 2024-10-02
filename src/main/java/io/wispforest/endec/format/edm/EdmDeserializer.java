@@ -2,6 +2,7 @@ package io.wispforest.endec.format.edm;
 
 import io.wispforest.endec.*;
 import io.wispforest.endec.SerializationContext;
+import io.wispforest.endec.impl.StructFieldException;
 import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
@@ -227,26 +228,34 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
 
         @Override
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec) {
-            var element = this.map.get(name);
-            if (element == null) {
-                throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
+            try {
+                var element = this.map.get(name);
+                if (element == null) {
+                    throw new IllegalStateException("Field data was missing from serialized data, but no default value was provided");
+                }
+                return EdmDeserializer.this.frame(
+                        () -> element,
+                        () -> endec.decode(ctx, EdmDeserializer.this),
+                        true
+                );
+            } catch (Exception e) {
+                throw StructFieldException.of(name, e, false);
             }
-            return EdmDeserializer.this.frame(
-                    () -> element,
-                    () -> endec.decode(ctx, EdmDeserializer.this),
-                    true
-            );
         }
 
         @Override
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
-            var element = this.map.get(name);
-            if (element == null) return defaultValue;
-            return EdmDeserializer.this.frame(
-                    () -> element,
-                    () -> endec.decode(ctx, EdmDeserializer.this),
-                    true
-            );
+            try {
+                var element = this.map.get(name);
+                if (element == null) return defaultValue;
+                return EdmDeserializer.this.frame(
+                        () -> element,
+                        () -> endec.decode(ctx, EdmDeserializer.this),
+                        true
+                );
+            } catch (Exception e) {
+                throw StructFieldException.of(name, e, false);
+            }
         }
     }
 }

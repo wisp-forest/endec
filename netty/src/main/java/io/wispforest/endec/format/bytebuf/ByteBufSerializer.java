@@ -6,6 +6,7 @@ import io.netty.buffer.Unpooled;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.SerializationContext;
 import io.wispforest.endec.Serializer;
+import io.wispforest.endec.impl.StructFieldException;
 import io.wispforest.endec.util.VarInts;
 
 import java.util.Optional;
@@ -143,8 +144,12 @@ public class ByteBufSerializer<B extends ByteBuf> implements Serializer<B> {
 
         @Override
         public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value) {
-            endec.encode(ctx, ByteBufSerializer.this, value);
-            return this;
+            try {
+                endec.encode(ctx, ByteBufSerializer.this, value);
+                return this;
+            } catch (Exception e) {
+                throw StructFieldException.of(name, e, true);
+            }
         }
 
         @Override

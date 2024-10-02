@@ -4,6 +4,7 @@ import blue.endless.jankson.*;
 import io.wispforest.endec.*;
 import io.wispforest.endec.SerializationAttributes;
 import io.wispforest.endec.SerializationContext;
+import io.wispforest.endec.impl.StructFieldException;
 import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
@@ -260,26 +261,34 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
 
         @Override
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec) {
-            var element = this.object.get(name);
-            if (element == null) {
-                throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
+            try {
+                var element = this.object.get(name);
+                if (element == null) {
+                    throw new IllegalStateException("Field data was missing from serialized data, but no default value was provided");
+                }
+                return JanksonDeserializer.this.frame(
+                        () -> element,
+                        () -> endec.decode(ctx, JanksonDeserializer.this),
+                        true
+                );
+            } catch (Exception e) {
+                throw StructFieldException.of(name, e, false);
             }
-            return JanksonDeserializer.this.frame(
-                    () -> element,
-                    () -> endec.decode(ctx, JanksonDeserializer.this),
-                    true
-            );
         }
 
         @Override
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
-            var element = this.object.get(name);
-            if (element == null) return defaultValue;
-            return JanksonDeserializer.this.frame(
-                    () -> element,
-                    () -> endec.decode(ctx, JanksonDeserializer.this),
-                    true
-            );
+            try {
+                var element = this.object.get(name);
+                if (element == null) return defaultValue;
+                return JanksonDeserializer.this.frame(
+                        () -> element,
+                        () -> endec.decode(ctx, JanksonDeserializer.this),
+                        true
+                );
+            } catch (Exception e) {
+                throw StructFieldException.of(name, e, false);
+            }
         }
     }
 }

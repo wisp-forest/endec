@@ -35,8 +35,10 @@ public sealed class StructField<S, F> permits StructField.Flat {
     public void encodeField(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, S instance) {
         try {
             struct.field(this.name, ctx, this.endec, this.getter.apply(instance));
+        } catch (StructFieldException e) {
+            throw e;
         } catch (Exception e) {
-            throw new StructFieldException("Exception occurred when encoding a given StructField: [Field: " + this.name + "]", e);
+            throw StructFieldException.of(name, e, true);
         }
     }
 
@@ -45,8 +47,10 @@ public sealed class StructField<S, F> permits StructField.Flat {
             return this.defaultValueFactory != null
                     ? struct.field(this.name, ctx, this.endec, this.defaultValueFactory.get())
                     : struct.field(this.name, ctx, this.endec);
+        } catch (StructFieldException e) {
+            throw e;
         } catch (Exception e) {
-            throw new StructFieldException("Exception occurred when decoding a given StructField: [Field: " + this.name + "]", e);
+            throw StructFieldException.of(this.name, e, false);
         }
     }
 
@@ -62,18 +66,25 @@ public sealed class StructField<S, F> permits StructField.Flat {
 
         @Override
         public void encodeField(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, S instance) {
-            this.endec().encodeStruct(ctx, serializer, struct, this.getter.apply(instance));
+            try {
+                this.endec().encodeStruct(ctx, serializer, struct, this.getter.apply(instance));
+            } catch (StructFieldException e) {
+                throw e;
+            } catch (Exception e) {
+                throw StructFieldException.of(name, e, true);
+            }
         }
 
         @Override
         public F decodeField(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct) {
-            return this.endec().decodeStruct(ctx, deserializer, struct);
+            try {
+                return this.endec().decodeStruct(ctx, deserializer, struct);
+            } catch (StructFieldException e) {
+                throw e;
+            } catch (Exception e) {
+                throw StructFieldException.of(name, e, true);
+            }
         }
     }
 
-    public static class StructFieldException extends IllegalStateException {
-        public StructFieldException(String message, Throwable cause) {
-            super(message, cause);
-        }
-    }
 }

@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import io.wispforest.endec.*;
+import io.wispforest.endec.impl.StructFieldException;
 import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
@@ -256,26 +257,34 @@ public class GsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
 
         @Override
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec) {
-            var element = this.object.get(name);
-            if (element == null) {
-                throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
+            try {
+                var element = this.object.get(name);
+                if (element == null) {
+                    throw new IllegalStateException("Field data was missing from serialized data, but no default value was provided");
+                }
+                return GsonDeserializer.this.frame(
+                        () -> element,
+                        () -> endec.decode(ctx, GsonDeserializer.this),
+                        true
+                );
+            } catch (Exception e) {
+                throw StructFieldException.of(name, e, false);
             }
-            return GsonDeserializer.this.frame(
-                    () -> element,
-                    () -> endec.decode(ctx, GsonDeserializer.this),
-                    true
-            );
         }
 
         @Override
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
-            var element = this.object.get(name);
-            if (element == null) return defaultValue;
-            return GsonDeserializer.this.frame(
-                    () -> element,
-                    () -> endec.decode(ctx, GsonDeserializer.this),
-                    true
-            );
+            try {
+                var element = this.object.get(name);
+                if (element == null) return defaultValue;
+                return GsonDeserializer.this.frame(
+                        () -> element,
+                        () -> endec.decode(ctx, GsonDeserializer.this),
+                        true
+                );
+            } catch (Exception e) {
+                throw StructFieldException.of(name, e, false);
+            }
         }
     }
 }

@@ -2,6 +2,7 @@ package io.wispforest.endec.format.gson;
 
 import com.google.gson.*;
 import io.wispforest.endec.*;
+import io.wispforest.endec.impl.StructFieldException;
 import io.wispforest.endec.util.RecursiveSerializer;
 
 import java.util.Optional;
@@ -157,12 +158,15 @@ public class GsonSerializer extends RecursiveSerializer<JsonElement> implements 
 
         @Override
         public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value) {
-            GsonSerializer.this.frame(encoded -> {
-                endec.encode(ctx, GsonSerializer.this, value);
-                this.result.add(name, encoded.require("struct field"));
-            }, true);
-
-            return this;
+            try {
+                GsonSerializer.this.frame(encoded -> {
+                    endec.encode(ctx, GsonSerializer.this, value);
+                    this.result.add(name, encoded.require("struct field"));
+                }, true);
+                return this;
+            } catch (Exception e) {
+                throw StructFieldException.of(name, e, true);
+            }
         }
 
         @Override

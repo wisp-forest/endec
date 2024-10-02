@@ -2,6 +2,7 @@ package io.wispforest.endec.format.edm;
 
 import io.wispforest.endec.*;
 import io.wispforest.endec.SerializationContext;
+import io.wispforest.endec.impl.StructFieldException;
 import io.wispforest.endec.util.RecursiveSerializer;
 
 import java.util.*;
@@ -174,12 +175,15 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
 
         @Override
         public <F> Serializer.Struct field(String name, SerializationContext ctx, Endec<F> endec, F value) {
-            EdmSerializer.this.frame(encoded -> {
-                endec.encode(ctx, EdmSerializer.this, value);
-                this.result.put(name, encoded.require("struct field"));
-            }, true);
-
-            return this;
+            try {
+                EdmSerializer.this.frame(encoded -> {
+                    endec.encode(ctx, EdmSerializer.this, value);
+                    this.result.put(name, encoded.require("struct field"));
+                }, true);
+                return this;
+            } catch (Exception e) {
+                throw StructFieldException.of(name, e, true);
+            }
         }
 
         @Override

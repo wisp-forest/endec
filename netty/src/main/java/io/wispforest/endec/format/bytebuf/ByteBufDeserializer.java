@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.SerializationContext;
+import io.wispforest.endec.impl.StructFieldException;
 import io.wispforest.endec.util.VarInts;
 import org.jetbrains.annotations.Nullable;
 
@@ -169,7 +170,11 @@ public class ByteBufDeserializer implements Deserializer<ByteBuf> {
 
         @Override
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
-            return endec.decode(ctx, ByteBufDeserializer.this);
+            try {
+                return endec.decode(ctx, ByteBufDeserializer.this);
+            } catch (Exception e) {
+                throw StructFieldException.of(name, e, false);
+            }
         }
     }
 
