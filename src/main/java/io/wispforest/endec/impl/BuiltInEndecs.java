@@ -5,6 +5,8 @@ import io.wispforest.endec.Endec;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public final class BuiltInEndecs{
@@ -46,12 +48,34 @@ public final class BuiltInEndecs{
         return new int[]{(int)(uuidMost >> 32), (int)uuidMost, (int)(uuidLeast >> 32), (int)uuidLeast};
     }
 
+    public static <C, V> Endec<V> vectorEndec(String name, Endec<C> componentEndec, BiFunction<C, C, V> constructor, Function<V, C> xGetter, Function<V, C> yGetter) {
+        return componentEndec.listOf()
+                .validate(validateSize(name, 2))
+                .xmap(
+                        components -> constructor.apply(components.get(0), components.get(1)),
+                        vector -> List.of(xGetter.apply(vector), yGetter.apply(vector))
+                );
+    }
+
     public static <C, V> Endec<V> vectorEndec(String name, Endec<C> componentEndec, StructEndecBuilder.Function3<C, C, C, V> constructor, Function<V, C> xGetter, Function<V, C> yGetter, Function<V, C> zGetter) {
-        return componentEndec.listOf().validate(ints -> {
-            if (ints.size() != 3) throw new IllegalStateException(name + " array must have three elements");
-        }).xmap(
-                components -> constructor.apply(components.get(0), components.get(1), components.get(2)),
-                vector -> List.of(xGetter.apply(vector), yGetter.apply(vector), zGetter.apply(vector))
-        );
+        return componentEndec.listOf()
+                .validate(validateSize(name, 3))
+                .xmap(
+                        components -> constructor.apply(components.get(0), components.get(1), components.get(2)),
+                        vector -> List.of(xGetter.apply(vector), yGetter.apply(vector), zGetter.apply(vector))
+                );
+    }
+
+    public static <C, V> Endec<V> vectorEndec(String name, Endec<C> componentEndec, StructEndecBuilder.Function4<C, C, C, C, V> constructor, Function<V, C> xGetter, Function<V, C> yGetter, Function<V, C> zGetter, Function<V, C> wGetter) {
+        return componentEndec.listOf()
+                .validate(validateSize(name, 4))
+                .xmap(
+                        components -> constructor.apply(components.get(0), components.get(1), components.get(2), components.get(3)),
+                        vector -> List.of(xGetter.apply(vector), yGetter.apply(vector), zGetter.apply(vector), wGetter.apply(vector))
+                );
+    }
+
+    private static <C> Consumer<List<C>> validateSize(String name, int requiredSize) {
+        return collection -> { if (collection.size() != 4) throw new IllegalStateException(name + "collection must have " + requiredSize + " elements"); };
     }
 }
