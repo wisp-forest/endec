@@ -143,6 +143,14 @@ public interface Endec<T> {
         };
     }
 
+    static <T> StructEndec<T> unit(T instance) {
+        return unit(() -> instance);
+    }
+
+    static <T> StructEndec<T> unit(Supplier<T> instance) {
+        return StructEndec.of((ctx, serializer, struct, value) -> {}, (ctx, deserializer, struct) -> instance.get());
+    }
+
     /**
      * Create a new endec which serializes a map from keys serialized using
      * {@code keyEndec} to values serialized using {@code valueEndec}.
@@ -414,6 +422,12 @@ public interface Endec<T> {
 
     // ---
 
+    default StructEndec<T> structOf(String name) {
+        return StructEndec.of(
+                (ctx, serializer, struct, value) -> struct.field(name, ctx, Endec.this, value),
+                (ctx, serializer, struct) -> struct.field(name, ctx, Endec.this));
+    }
+
     default <S> StructField<S, T> fieldOf(String name, Function<S, T> getter) {
         return new StructField<>(name, this, getter);
     }
@@ -433,7 +447,7 @@ public interface Endec<T> {
 
     @FunctionalInterface
     interface Decoder<T> {
-        T decode(SerializationContext ctx, Deserializer<?> serializer);
+        T decode(SerializationContext ctx, Deserializer<?> deserializer);
     }
 
     @FunctionalInterface
