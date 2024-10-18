@@ -15,6 +15,10 @@ public class AttributeEndecBuilder<T> {
     }
 
     public AttributeEndecBuilder<T> orElseIf(Endec<T> endec, SerializationAttribute attribute) {
+        return orElseIf(attribute, endec);
+    }
+
+    public AttributeEndecBuilder<T> orElseIf(SerializationAttribute attribute, Endec<T> endec) {
         if (this.branches.containsKey(attribute)) {
             throw new IllegalStateException("Cannot have more than one branch for attribute " + attribute.name);
         }
