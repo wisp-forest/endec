@@ -2,6 +2,8 @@ package io.wispforest.endec.format.edm;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import io.wispforest.endec.util.BlockWriter;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -56,11 +58,6 @@ public sealed class EdmElement<T> permits EdmMap {
     }
 
     @Override
-    public String toString() {
-        return "E(" + this.type.name() + ", " + this.value + ")";
-    }
-
-    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof EdmElement<?> that)) return false;
@@ -73,6 +70,61 @@ public sealed class EdmElement<T> permits EdmMap {
         int result = this.value.hashCode();
         result = 31 * result + this.type.hashCode();
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return format(new BlockWriter()).buildResult();
+    }
+
+    protected BlockWriter format(BlockWriter formatter) {
+        return switch (this.type){
+            case BYTES -> {
+                yield formatter.writeBlock("bytes(", ")", false, blockWriter -> {
+                    blockWriter.write(Arrays.toString(Base64.getEncoder().encode(this.<byte[]>cast())));
+                });
+            }
+            case MAP -> {
+                yield formatter.writeBlock("map({", "})", blockWriter -> {
+                    var map = this.<Map<String, EdmElement<?>>>cast();
+
+                    int idx = 0;
+
+                    for (var entry : map.entrySet()) {
+                        formatter.write(entry.getKey() + ": ");
+                        entry.getValue().format(formatter);
+
+                        if (idx < map.size() - 1) formatter.writeln(",");
+
+                        idx++;
+                    }
+                });
+            }
+            case SEQUENCE -> {
+                yield formatter.writeBlock("sequence([", "])", blockWriter -> {
+                    var list = this.<List<EdmElement<?>>>cast();
+
+                    for (int idx = 0; idx < list.size(); idx++) {
+                        list.get(idx).format(formatter);
+                        if (idx < list.size() - 1) formatter.writeln(",");
+                    }
+                });
+            }
+            case OPTIONAL -> {
+                yield formatter.writeBlock("optional(", ")", false, blockWriter -> {
+                    var optional = this.<Optional<EdmElement<?>>>cast();
+
+                    optional.ifPresentOrElse(
+                            edmElement -> edmElement.format(formatter),
+                            () -> formatter.write(""));
+                });
+            }
+            default -> {
+                yield formatter.writeBlock(type.getDataName() + "(", ")", false, blockWriter -> {
+                    blockWriter.write(Objects.toString(value));
+                });
+            }
+        };
     }
 
     public static EdmElement<Byte> wrapByte(byte value) {
@@ -111,6 +163,10 @@ public sealed class EdmElement<T> permits EdmMap {
         return new EdmElement<>(value, Type.BYTES);
     }
 
+    public static EdmElement<Optional<EdmElement<?>>> wrapOptional(@Nullable EdmElement<?> value) {
+        return wrapOptional(Optional.ofNullable(value));
+    }
+
     public static EdmElement<Optional<EdmElement<?>>> wrapOptional(Optional<EdmElement<?>> value) {
         if(value.isEmpty()) return EdmElement.EMPTY;
 
@@ -130,19 +186,36 @@ public sealed class EdmElement<T> permits EdmMap {
     }
 
     public enum Type {
-        BYTE,
-        SHORT,
-        INT,
-        LONG,
-        FLOAT,
-        DOUBLE,
+        BYTE("i8"),
+        SHORT("i16"),
+        INT("i32"),
+        LONG("i64"),
+        FLOAT("f32"),
+        DOUBLE("f64"),
 
-        BOOLEAN,
-        STRING,
-        BYTES,
-        OPTIONAL,
+        BOOLEAN(),
+        STRING(),
+        BYTES(),
+        OPTIONAL(),
 
-        SEQUENCE,
-        MAP
+        SEQUENCE(),
+        MAP();
+
+        @Nullable
+        private final String alternativeName;
+
+        Type() {
+            this(null);
+        }
+
+        Type(@Nullable String dataName) {
+            this.alternativeName = dataName;
+        }
+
+        public String getDataName(){
+            if (this.alternativeName != null) return this.alternativeName;
+
+            return this.name().toLowerCase();
+        }
     }
 }
