@@ -74,6 +74,10 @@ public interface StructEndec<T> extends Endec<T> {
         return new StructField.Flat<>(this, getter);
     }
 
+    default <M extends T> StructField<M, T> flatInheritedFieldOf() {
+        return new StructField.Flat<>(this, m -> m);
+    }
+
     @Override
     default <R> StructEndec<R> xmap(Function<T, R> to, Function<R, T> from) {
         return StructEndec.of(
