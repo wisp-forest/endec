@@ -366,6 +366,43 @@ public interface Endec<T> {
         });
     }
 
+    static <N extends Number & Comparable<N>> Endec<N> clampedMax(Endec<N> endec, N max) {
+        return clamped(endec, null, max);
+    }
+
+    static <N extends Number & Comparable<N>> Endec<N> rangedMax(Endec<N> endec, N max, boolean throwError) {
+        return ranged(endec, null, max, throwError);
+    }
+
+    static <N extends Number & Comparable<N>> Endec<N> clampedMin(Endec<N> endec, N min) {
+        return clamped(endec, min, null);
+    }
+
+    static <N extends Number & Comparable<N>> Endec<N> rangedMin(Endec<N> endec, N min, boolean throwError) {
+        return ranged(endec, min, null, throwError);
+    }
+
+    static <N extends Number & Comparable<N>> Endec<N> clamped(Endec<N> endec, @Nullable N min, @Nullable N max) {
+        return ranged(endec, min, max, false);
+    }
+
+    static <N extends Number & Comparable<N>> Endec<N> ranged(Endec<N> endec, @Nullable N min, @Nullable N max, boolean throwError) {
+        Function<N, N> errorChecker = n -> {
+            // 1st check if the given min value exist and then compare similar to: [n < min]
+            // 2nd check if the given min value exist and then compare similar to: [n > max]
+            if (min != null && n.compareTo(min) < 0) {
+                if(throwError) throw new RangeNumberException(n, min, max);
+                return min;
+            } else if (max != null && n.compareTo(max) > 0) {
+                if(throwError) throw new RangeNumberException(n, min, max);
+                return max;
+            }
+            return n;
+        };
+
+        return endec.xmap(errorChecker::apply, errorChecker::apply);
+    }
+
     /**
      * Create a new endec which, if decoding using this endec's {@link #decode(SerializationContext, Deserializer)} fails,
      * instead tries to decode using {@code decodeOnError}
