@@ -34,7 +34,12 @@ public class EdmIo {
                 var optional = data.<Optional<EdmElement<?>>>cast();
 
                 output.writeBoolean(optional.isPresent());
-                if (optional.isPresent()) encodeElementData(output, optional.get());
+                if (optional.isPresent()) {
+                    var element = optional.get();
+
+                    output.writeByte(element.type().ordinal());
+                    encodeElementData(output, element);
+                }
             }
             case SEQUENCE -> {
                 var list = data.<List<EdmElement<?>>>cast();
@@ -100,7 +105,7 @@ public class EdmIo {
             }
             case MAP -> {
                 var length = input.readInt();
-                var result = new HashMap<String, EdmElement<?>>(length);
+                var result = new LinkedHashMap<String, EdmElement<?>>(length);
 
                 for (int i = 0; i < length; i++) {
                     result.put(
