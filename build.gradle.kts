@@ -27,14 +27,45 @@ allprojects {
 
         implementation("it.unimi.dsi:fastutil:8.5.12")
         implementation("com.google.guava:guava:32.1.2-jre")
+
+        testImplementation("org.junit.jupiter:junit-jupiter:5.11.2")
+        testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+        testImplementation(rootProject.project("gson"))
+        testImplementation(rootProject.project("jankson"))
+        testImplementation(rootProject.project("netty"))
+
+        testImplementation("org.jetbrains:annotations:24.1.0")
+        testImplementation("io.netty:netty-buffer:4.1.97.Final")
     }
+
+    tasks.named<Test>("test") {
+        useJUnitPlatform()
+
+        maxHeapSize = "1G"
+
+        testLogging { events("passed") }
+
+        failFast = true
+        ignoreFailures = false
+    }
+
+    // Custom task to check tests
+    val checkTests by tasks.registering {
+        dependsOn(rootProject.tasks.test)
+
+        doLast {
+            if (rootProject.tasks.test.get().state.failure != null) {
+                throw GradleException("Tests failed. Publishing to Maven Local is aborted.")
+            }
+        }
+    }
+
+    tasks.named("publishToMavenLocal") { this.dependsOn(checkTests) }
+    tasks.named("publish") { this.dependsOn(checkTests) }
 
     val targetJavaVersion = 17
     tasks.withType<JavaCompile>().configureEach {
-        // ensure that the encoding is set to UTF-8, no matter what the system default is
-        // this fixes some edge cases with special characters not displaying correctly
-        // see http://yodaconditions.net/blog/fix-for-java-file-encoding-problems-with-gradle.html
-        // If Javadoc is generated, this must be specified in that task too.
         this.options.encoding = "UTF-8"
         if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
             this.options.release = targetJavaVersion
@@ -46,6 +77,8 @@ allprojects {
     }
 
     publishing {
+        if (project.name == "endec_test") return@publishing;
+
         publications {
             create<MavenPublication>("mavenCommon") {
                 groupId = project.property("maven_group") as String;
