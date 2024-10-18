@@ -5,11 +5,13 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import io.wispforest.endec.*;
+import io.wispforest.endec.format.edm.EdmDeserializer;
 import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 public class GsonDeserializer extends RecursiveDeserializer<JsonElement> implements SelfDescribedDeserializer<JsonElement> {
 
@@ -204,8 +206,7 @@ public class GsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
             var element = this.elements.next();
             return GsonDeserializer.this.frame(
                     () -> element,
-                    () -> this.valueEndec.decode(this.ctx, GsonDeserializer.this),
-                    false
+                    () -> this.valueEndec.decode(this.ctx, GsonDeserializer.this)
             );
         }
     }
@@ -240,8 +241,7 @@ public class GsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
             var entry = this.entries.next();
             return GsonDeserializer.this.frame(
                     entry::getValue,
-                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx, GsonDeserializer.this)),
-                    false
+                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx, GsonDeserializer.this))
             );
         }
     }
@@ -255,26 +255,18 @@ public class GsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
         }
 
         @Override
-        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec) {
+        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable Supplier<F> defaultValueFactory) {
             var element = this.object.get(name);
             if (element == null) {
-                throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
+                if(defaultValueFactory == null) {
+                    throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
+                }
+
+                return defaultValueFactory.get();
             }
             return GsonDeserializer.this.frame(
                     () -> element,
-                    () -> endec.decode(ctx, GsonDeserializer.this),
-                    true
-            );
-        }
-
-        @Override
-        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
-            var element = this.object.get(name);
-            if (element == null) return defaultValue;
-            return GsonDeserializer.this.frame(
-                    () -> element,
-                    () -> endec.decode(ctx, GsonDeserializer.this),
-                    true
+                    () -> endec.decode(ctx, GsonDeserializer.this)
             );
         }
     }

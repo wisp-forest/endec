@@ -15,31 +15,22 @@ import java.util.function.Consumer;
  */
 public abstract class RecursiveSerializer<T> implements Serializer<T> {
 
-    protected final Deque<Frame<T>> frames = new ArrayDeque<>();
+    protected final Deque<Consumer<T>> frames = new ArrayDeque<>();
     protected T result;
 
     protected RecursiveSerializer(T initialResult) {
         this.result = initialResult;
-        this.frames.push(new Frame<>(t -> this.result = t, false));
+        this.frames.push(t -> this.result = t);
     }
 
     /**
      * Store {@code value} into the current encoding location
      * <p>
-     * This location is altered by {@link #frame(FrameAction, boolean)} and
+     * This location is altered by {@link #frame(FrameAction)} and
      * initially is just the serializer's result directly
      */
     protected void consume(T value) {
-        this.frames.peek().sink.accept(value);
-    }
-
-    /**
-     * Whether this deserializer is currently decoding a field
-     * of a struct - useful for, for instance, an optimized optional representation
-     * by skipping the field to indicate an absent optional
-     */
-    protected boolean isWritingStructField() {
-        return this.frames.peek().isStructField;
+        this.frames.peek().accept(value);
     }
 
     /**
@@ -48,13 +39,13 @@ public abstract class RecursiveSerializer<T> implements Serializer<T> {
      * <p>
      * {@code action} receives {@code encoded}, which is where the next call
      * to {@link #consume(Object)} (which {@code action} must somehow cause) will
-     * store the value and allow {@code action} to retrieve it using {@link EncodedValue#get()}
+     * store the value and allow {@code action} to retrieve it using {@link EncodedValue#value()}
      * or, preferably, {@link EncodedValue#require(String)}
      */
-    protected void frame(FrameAction<T> action, boolean isStructField) {
+    protected void frame(FrameAction<T> action) {
         var encoded = new EncodedValue<T>();
 
-        this.frames.push(new Frame<>(encoded::set, isStructField));
+        this.frames.push(encoded::set);
         action.accept(encoded);
         this.frames.pop();
     }
@@ -69,8 +60,6 @@ public abstract class RecursiveSerializer<T> implements Serializer<T> {
         void accept(EncodedValue<T> encoded);
     }
 
-    protected record Frame<T>(Consumer<T> sink, boolean isStructField) {}
-
     protected static class EncodedValue<T> {
         private T value = null;
         private boolean encoded = false;
@@ -80,7 +69,7 @@ public abstract class RecursiveSerializer<T> implements Serializer<T> {
             this.encoded = true;
         }
 
-        public T get() {
+        public T value() {
             return this.value;
         }
 
@@ -90,7 +79,7 @@ public abstract class RecursiveSerializer<T> implements Serializer<T> {
 
         public T require(String name) {
             if (!this.encoded) throw new IllegalStateException("Endec for " + name + " serialized nothing");
-            return this.value;
+            return this.value();
         }
     }
 }

@@ -10,6 +10,7 @@ import org.jetbrains.annotations.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class ByteBufDeserializer implements Deserializer<ByteBuf> {
 
@@ -163,12 +164,7 @@ public class ByteBufDeserializer implements Deserializer<ByteBuf> {
         }
 
         @Override
-        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec) {
-            return this.field(name, ctx, endec, null);
-        }
-
-        @Override
-        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
+        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable Supplier<F> defaultValueFactory) {
             return endec.decode(ctx, ByteBufDeserializer.this);
         }
     }

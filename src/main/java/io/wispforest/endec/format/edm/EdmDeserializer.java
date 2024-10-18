@@ -6,6 +6,7 @@ import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.Supplier;
 
 public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implements SelfDescribedDeserializer<EdmElement<?>> {
 
@@ -86,8 +87,7 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
         if (optional.isPresent()) {
             return this.frame(
                     optional::get,
-                    () -> Optional.of(endec.decode(ctx, this)),
-                    false
+                    () -> Optional.of(endec.decode(ctx, this))
             );
         } else {
             return Optional.empty();
@@ -175,8 +175,7 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
             var element = this.elements.next();
             return EdmDeserializer.this.frame(
                     () -> element,
-                    () -> this.valueEndec.decode(this.ctx, EdmDeserializer.this),
-                    false
+                    () -> this.valueEndec.decode(this.ctx, EdmDeserializer.this)
             );
         }
     }
@@ -211,8 +210,7 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
             var entry = this.entries.next();
             return EdmDeserializer.this.frame(
                     entry::getValue,
-                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx, EdmDeserializer.this)),
-                    false
+                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx, EdmDeserializer.this))
             );
         }
     }
@@ -226,26 +224,18 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
         }
 
         @Override
-        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec) {
+        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable Supplier<F> defaultValueFactory) {
             var element = this.map.get(name);
             if (element == null) {
-                throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
+                if(defaultValueFactory == null) {
+                    throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
+                }
+
+                return defaultValueFactory.get();
             }
             return EdmDeserializer.this.frame(
                     () -> element,
-                    () -> endec.decode(ctx, EdmDeserializer.this),
-                    true
-            );
-        }
-
-        @Override
-        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
-            var element = this.map.get(name);
-            if (element == null) return defaultValue;
-            return EdmDeserializer.this.frame(
-                    () -> element,
-                    () -> endec.decode(ctx, EdmDeserializer.this),
-                    true
+                    () -> endec.decode(ctx, EdmDeserializer.this)
             );
         }
     }

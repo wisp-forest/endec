@@ -100,14 +100,10 @@ public class JanksonSerializer extends RecursiveSerializer<JsonElement> implemen
 
     @Override
     public <V> void writeOptional(SerializationContext ctx, Endec<V> endec, Optional<V> optional) {
-        if (this.isWritingStructField()) {
-            optional.ifPresent(value -> endec.encode(ctx, this, value));
-        } else {
-            optional.ifPresentOrElse(
-                    value -> endec.encode(ctx, this, value),
-                    () -> this.consume(JsonNull.INSTANCE)
-            );
-        }
+        optional.ifPresentOrElse(
+                value -> endec.encode(ctx, this, value),
+                () -> this.consume(JsonNull.INSTANCE)
+        );
     }
 
     // ---
@@ -156,15 +152,20 @@ public class JanksonSerializer extends RecursiveSerializer<JsonElement> implemen
             JanksonSerializer.this.frame(encoded -> {
                 this.valueEndec.encode(this.ctx, JanksonSerializer.this, value);
                 this.result.put(key, encoded.require("map value"));
-            }, false);
+            });
         }
 
         @Override
-        public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value) {
+        public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value, boolean mayOmit) {
             JanksonSerializer.this.frame(encoded -> {
                 endec.encode(ctx, JanksonSerializer.this, value);
-                this.result.put(name, encoded.require("struct field"));
-            }, true);
+
+                var element = encoded.require("struct field");
+
+                if (mayOmit && element.equals(JsonNull.INSTANCE)) return;
+
+                this.result.put(name, element);
+            });
 
             return this;
         }
@@ -202,7 +203,7 @@ public class JanksonSerializer extends RecursiveSerializer<JsonElement> implemen
             JanksonSerializer.this.frame(encoded -> {
                 this.valueEndec.encode(this.ctx, JanksonSerializer.this, element);
                 this.result.add(encoded.require("sequence element"));
-            }, false);
+            });
         }
 
         @Override

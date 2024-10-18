@@ -84,8 +84,8 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
         var result = new EdmElement<?>[1];
         this.frame(encoded -> {
             optional.ifPresent(v -> endec.encode(ctx, this, v));
-            result[0] = encoded.get();
-        }, false);
+            result[0] = encoded.value();
+        });
 
         this.consume(EdmElement.wrapOptional(Optional.ofNullable(result[0])));
     }
@@ -127,7 +127,7 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
             EdmSerializer.this.frame(encoded -> {
                 this.elementEndec.encode(ctx, EdmSerializer.this, element);
                 this.result.add(encoded.require("sequence element"));
-            }, false);
+            });
         }
 
         @Override
@@ -155,7 +155,7 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
             EdmSerializer.this.frame(encoded -> {
                 this.valueEndec.encode(ctx, EdmSerializer.this, value);
                 this.result.put(key, encoded.require("map value"));
-            }, false);
+            });
         }
 
         @Override
@@ -173,11 +173,16 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
         }
 
         @Override
-        public <F> Serializer.Struct field(String name, SerializationContext ctx, Endec<F> endec, F value) {
+        public <F> Serializer.Struct field(String name, SerializationContext ctx, Endec<F> endec, F value, boolean mayOmit) {
             EdmSerializer.this.frame(encoded -> {
                 endec.encode(ctx, EdmSerializer.this, value);
-                this.result.put(name, encoded.require("struct field"));
-            }, true);
+
+                var element = encoded.require("struct field");
+
+                if (mayOmit && element.equals(EdmElement.EMPTY)) return;
+
+                this.result.put(name, element);
+            });
 
             return this;
         }

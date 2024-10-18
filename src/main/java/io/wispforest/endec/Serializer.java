@@ -41,6 +41,10 @@ public interface Serializer<T> {
     }
 
     interface Struct extends Endable {
-        <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value);
+        default <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value) {
+            return field(name, ctx, endec, value, false);
+        }
+
+        <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value, boolean mayOmit);
     }
 }

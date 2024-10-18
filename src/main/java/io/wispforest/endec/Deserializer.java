@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Iterator;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public interface Deserializer<T> {
 
@@ -56,16 +57,28 @@ public interface Deserializer<T> {
     }
 
     interface Struct {
+
         /**
-         * Decode the value of field {@code name} using {@code endec}. If no
-         * such field exists in the serialized data, an exception is thrown
+         * @deprecated Use {{@link #field(String, SerializationContext, Endec, Supplier)}}
          */
-        <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec);
+        @Deprecated
+        default <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec) {
+            return field(name, ctx, endec, (Supplier<F>) null);
+        }
+
+        /**
+         * @deprecated Use {{@link #field(String, SerializationContext, Endec, Supplier)}}
+         */
+//        @Deprecated
+//        default <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
+//            return field(name, ctx, endec, defaultValue == null ? (Supplier<F>) (Object) null : () -> defaultValue);
+//        }
 
         /**
          * Decode the value of field {@code name} using {@code endec}. If no
-         * such field exists in the serialized data, {@code defaultValue} is returned
+         * such field exists in the serialized data, then {@code defaultValue}
+         * supplier result is used as the returned value
          */
-        <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue);
+        <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable Supplier<F> defaultValueFactory);
     }
 }

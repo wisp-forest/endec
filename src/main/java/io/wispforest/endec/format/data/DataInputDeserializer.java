@@ -10,6 +10,7 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class DataInputDeserializer implements Deserializer<DataInput> {
 
@@ -188,12 +189,7 @@ public class DataInputDeserializer implements Deserializer<DataInput> {
         }
 
         @Override
-        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec) {
-            return endec.decode(ctx, DataInputDeserializer.this);
-        }
-
-        @Override
-        public <F> @Nullable F field(@Nullable String field, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
+        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable Supplier<F> defaultValueFactory) {
             return endec.decode(ctx, DataInputDeserializer.this);
         }
     }

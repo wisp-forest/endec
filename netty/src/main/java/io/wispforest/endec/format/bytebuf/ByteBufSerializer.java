@@ -142,7 +142,7 @@ public class ByteBufSerializer<B extends ByteBuf> implements Serializer<B> {
         }
 
         @Override
-        public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value) {
+        public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value, boolean mayOmit) {
             endec.encode(ctx, ByteBufSerializer.this, value);
             return this;
         }

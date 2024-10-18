@@ -96,14 +96,10 @@ public class GsonSerializer extends RecursiveSerializer<JsonElement> implements 
 
     @Override
     public <V> void writeOptional(SerializationContext ctx, Endec<V> endec, Optional<V> optional) {
-        if (this.isWritingStructField()) {
-            optional.ifPresent(value -> endec.encode(ctx, this, value));
-        } else {
-            optional.ifPresentOrElse(
-                    value -> endec.encode(ctx, this, value),
-                    () -> this.consume(JsonNull.INSTANCE)
-            );
-        }
+        optional.ifPresentOrElse(
+                value -> endec.encode(ctx, this, value),
+                () -> this.consume(JsonNull.INSTANCE)
+        );
     }
 
     // ---
@@ -152,15 +148,20 @@ public class GsonSerializer extends RecursiveSerializer<JsonElement> implements 
             GsonSerializer.this.frame(encoded -> {
                 this.valueEndec.encode(this.ctx, GsonSerializer.this, value);
                 this.result.add(key, encoded.require("map value"));
-            }, false);
+            });
         }
 
         @Override
-        public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value) {
+        public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value, boolean mayOmit) {
             GsonSerializer.this.frame(encoded -> {
                 endec.encode(ctx, GsonSerializer.this, value);
-                this.result.add(name, encoded.require("struct field"));
-            }, true);
+
+                var element = encoded.require("struct field");
+
+                if (mayOmit && element.equals(JsonNull.INSTANCE)) return;
+
+                this.result.add(name, element);
+            });
 
             return this;
         }
@@ -198,7 +199,7 @@ public class GsonSerializer extends RecursiveSerializer<JsonElement> implements 
             GsonSerializer.this.frame(encoded -> {
                 this.valueEndec.encode(this.ctx, GsonSerializer.this, element);
                 this.result.add(encoded.require("sequence element"));
-            }, false);
+            });
         }
 
         @Override

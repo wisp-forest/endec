@@ -149,7 +149,7 @@ public class DataOutputSerializer<D extends DataOutput> implements Serializer<D>
         }
 
         @Override
-        public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value) {
+        public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value, boolean mayOmit) {
             endec.encode(ctx, DataOutputSerializer.this, value);
             return this;
         }

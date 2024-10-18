@@ -34,7 +34,7 @@ public sealed class StructField<S, F> permits StructField.Flat {
 
     public void encodeField(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, S instance) {
         try {
-            struct.field(this.name, ctx, this.endec, this.getter.apply(instance));
+            struct.field(this.name, ctx, this.endec, this.getter.apply(instance), this.defaultValueFactory != null);
         } catch (Exception e) {
             throw new StructFieldException("Exception occurred when encoding a given StructField: [Field: " + this.name + "]", e);
         }
@@ -42,9 +42,7 @@ public sealed class StructField<S, F> permits StructField.Flat {
 
     public F decodeField(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct) {
         try {
-            return this.defaultValueFactory != null
-                    ? struct.field(this.name, ctx, this.endec, this.defaultValueFactory.get())
-                    : struct.field(this.name, ctx, this.endec);
+            return struct.field(this.name, ctx, this.endec, this.defaultValueFactory);
         } catch (Exception e) {
             throw new StructFieldException("Exception occurred when decoding a given StructField: [Field: " + this.name + "]", e);
         }

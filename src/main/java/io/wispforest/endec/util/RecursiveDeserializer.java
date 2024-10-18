@@ -19,31 +19,22 @@ import java.util.function.Supplier;
  */
 public abstract class RecursiveDeserializer<T> implements Deserializer<T> {
 
-    protected final Deque<Frame<T>> frames = new ArrayDeque<>();
+    protected final Deque<Supplier<T>> frames = new ArrayDeque<>();
     protected final T serialized;
 
     protected RecursiveDeserializer(T serialized) {
         this.serialized = serialized;
-        this.frames.push(new Frame<>(() -> this.serialized, false));
+        this.frames.push(() -> this.serialized);
     }
 
     /**
      * Get the value currently to be decoded
      * <p>
-     * This value is altered by {@link #frame(Supplier, Supplier, boolean)} and
+     * This value is altered by {@link #frame(Supplier, Supplier)} and
      * initially returns the entire serialized input
      */
     protected T getValue() {
-        return this.frames.peek().source.get();
-    }
-
-    /**
-     * Whether this deserializer is currently decoding a field
-     * of a struct - useful for, for instance, an optimized optional representation
-     * by skipping the field to indicate an absent optional
-     */
-    protected boolean isReadingStructField() {
-        return this.frames.peek().isStructField;
+        return this.frames.peek().get();
     }
 
     /**
@@ -53,9 +44,9 @@ public abstract class RecursiveDeserializer<T> implements Deserializer<T> {
      * <p>
      * If {@code nextValue} is reading the field of a struct, {@code isStructField} must be set
      */
-    protected <V> V frame(Supplier<T> nextValue, Supplier<V> action, boolean isStructField) {
+    protected <V> V frame(Supplier<T> nextValue, Supplier<V> action) {
         try {
-            this.frames.push(new Frame<>(nextValue, isStructField));
+            this.frames.push(nextValue);
             return action.get();
         } finally {
             this.frames.pop();

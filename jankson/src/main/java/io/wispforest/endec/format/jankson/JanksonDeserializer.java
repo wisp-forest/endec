@@ -10,6 +10,7 @@ import org.jetbrains.annotations.Nullable;
 import java.math.BigDecimal;
 import java.util.Iterator;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> implements SelfDescribedDeserializer<JsonElement> {
 
@@ -208,8 +209,7 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
             var element = this.elements.next();
             return JanksonDeserializer.this.frame(
                     () -> element,
-                    () -> this.valueEndec.decode(this.ctx, JanksonDeserializer.this),
-                    false
+                    () -> this.valueEndec.decode(this.ctx, JanksonDeserializer.this)
             );
         }
     }
@@ -244,8 +244,7 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
             var entry = this.entries.next();
             return JanksonDeserializer.this.frame(
                     entry::getValue,
-                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx, JanksonDeserializer.this)),
-                    false
+                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx, JanksonDeserializer.this))
             );
         }
     }
@@ -259,26 +258,18 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
         }
 
         @Override
-        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec) {
+        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable Supplier<F> defaultValueFactory) {
             var element = this.object.get(name);
             if (element == null) {
-                throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
+                if(defaultValueFactory == null) {
+                    throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
+                }
+
+                return defaultValueFactory.get();
             }
             return JanksonDeserializer.this.frame(
                     () -> element,
-                    () -> endec.decode(ctx, JanksonDeserializer.this),
-                    true
-            );
-        }
-
-        @Override
-        public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
-            var element = this.object.get(name);
-            if (element == null) return defaultValue;
-            return JanksonDeserializer.this.frame(
-                    () -> element,
-                    () -> endec.decode(ctx, JanksonDeserializer.this),
-                    true
+                    () -> endec.decode(ctx, JanksonDeserializer.this)
             );
         }
     }
