@@ -120,12 +120,12 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
 
     private <S> void visit(SerializationContext ctx, Serializer<S> visitor, EdmElement<?> value) {
         switch (value.type()) {
-            case BYTE -> visitor.writeByte(ctx, value.cast());
-            case SHORT -> visitor.writeShort(ctx, value.cast());
-            case INT -> visitor.writeInt(ctx, value.cast());
-            case LONG -> visitor.writeLong(ctx, value.cast());
-            case FLOAT -> visitor.writeFloat(ctx, value.cast());
-            case DOUBLE -> visitor.writeDouble(ctx, value.cast());
+            case I8 -> visitor.writeByte(ctx, value.cast());
+            case I16 -> visitor.writeShort(ctx, value.cast());
+            case I32 -> visitor.writeInt(ctx, value.cast());
+            case I64 -> visitor.writeLong(ctx, value.cast());
+            case F32 -> visitor.writeFloat(ctx, value.cast());
+            case F64 -> visitor.writeDouble(ctx, value.cast());
             case BOOLEAN -> visitor.writeBoolean(ctx, value.cast());
             case STRING -> visitor.writeString(ctx, value.cast());
             case BYTES -> visitor.writeBytes(ctx, value.cast());

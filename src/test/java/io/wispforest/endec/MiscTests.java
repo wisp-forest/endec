@@ -102,12 +102,12 @@ public class MiscTests {
                 .orElseIf(attr2, (Endec<Number>) (Object)  Endec.INT)
                 .orElse((Endec<Number>) (Object) Endec.LONG);
 
-        Assertions.assertEquals(EdmElement.Type.BYTE, endec.encodeFully(SerializationContext.attributes(attr1), EdmSerializer::of, (byte) 16).type());
-        Assertions.assertEquals(EdmElement.Type.BYTE, endec.encodeFully(SerializationContext.attributes(attr1, attr2), EdmSerializer::of, (byte) 16).type());
-        Assertions.assertEquals(EdmElement.Type.BYTE, endec.encodeFully(SerializationContext.attributes(attr2, attr1), EdmSerializer::of, (byte) 16).type());
-        Assertions.assertEquals(EdmElement.Type.INT,  endec.encodeFully(SerializationContext.attributes(attr2), EdmSerializer::of, 16).type());
-        Assertions.assertEquals(EdmElement.Type.LONG, endec.encodeFully(SerializationContext.empty(), EdmSerializer::of, (long) 16).type());
+        Assertions.assertEquals(EdmElement.Type.I8, endec.encodeFully(SerializationContext.attributes(attr1), EdmSerializer::of, (byte) 16).type());
+        Assertions.assertEquals(EdmElement.Type.I8, endec.encodeFully(SerializationContext.attributes(attr1, attr2), EdmSerializer::of, (byte) 16).type());
+        Assertions.assertEquals(EdmElement.Type.I8, endec.encodeFully(SerializationContext.attributes(attr2, attr1), EdmSerializer::of, (byte) 16).type());
+        Assertions.assertEquals(EdmElement.Type.I32,  endec.encodeFully(SerializationContext.attributes(attr2), EdmSerializer::of, 16).type());
+        Assertions.assertEquals(EdmElement.Type.I64, endec.encodeFully(SerializationContext.empty(), EdmSerializer::of, (long) 16).type());
 
-        Assertions.assertNotEquals(EdmElement.Type.INT, endec.encodeFully(SerializationContext.attributes(attr1), EdmSerializer::of, (byte) 16).type());
+        Assertions.assertNotEquals(EdmElement.Type.I32, endec.encodeFully(SerializationContext.attributes(attr1), EdmSerializer::of, (byte) 16).type());
     }
 }

@@ -1,12 +1,10 @@
 package io.wispforest.endec.format.edm;
 
-import com.google.common.io.ByteStreams;
 import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.SerializationContext;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -89,7 +87,7 @@ public class LenientEdmDeserializer extends EdmDeserializer {
         if(value instanceof byte[] array) {
             list = new ArrayList<>();
 
-            for (byte b : array) list.add(EdmElement.wrapByte(b));
+            for (byte b : array) list.add(EdmElement.i8(b));
         } else if(value instanceof List){
             list = this.getValue().cast();
         } else {

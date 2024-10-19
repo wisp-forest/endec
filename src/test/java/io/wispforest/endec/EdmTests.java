@@ -22,14 +22,14 @@ public class EdmTests {
     @Test
     @DisplayName("toString Formatting")
     public void toStringFormatting(){
-        var edmElement = EdmElement.wrapMap(
+        var edmElement = EdmElement.map(
                 Utils.make(LinkedHashMap::new, innerMap -> {
-                    innerMap.put("ah_yes", EdmElement.wrapSequence(List.of(EdmElement.wrapInt(17), EdmElement.wrapString("a"))));
-                    innerMap.put("hmmm", EdmElement.wrapOptional(Optional.empty()));
-                    innerMap.put("uhhh", EdmElement.wrapOptional(
-                            EdmElement.wrapMap(
+                    innerMap.put("ah_yes", EdmElement.sequence(List.of(EdmElement.i32(17), EdmElement.string("a"))));
+                    innerMap.put("hmmm", EdmElement.optional(Optional.empty()));
+                    innerMap.put("uhhh", EdmElement.optional(
+                            EdmElement.map(
                                     Utils.make(LinkedHashMap::new, map -> {
-                                        map.put("b", EdmElement.wrapOptional(EdmElement.wrapFloat(16.5f)));
+                                        map.put("b", EdmElement.optional(EdmElement.f32(16.5f)));
                                     })
                             )
                     ));
@@ -64,14 +64,14 @@ public class EdmTests {
 
         var value = new Triple<>(List.of(34, 35), "test", Map.of("b", 16.5f));
 
-        var originalEdmElement = EdmElement.wrapMap(
+        var originalEdmElement = EdmElement.map(
                 Utils.make(LinkedHashMap::new, innerMap -> {
-                    innerMap.put("ah_yes", EdmElement.wrapSequence(List.of(EdmElement.wrapInt(34), EdmElement.wrapInt(35))));
-                    innerMap.put("hmmm", EdmElement.wrapOptional(Optional.of(EdmElement.wrapString("test"))));
-                    innerMap.put("uhhh", EdmElement.wrapOptional(
-                            EdmElement.wrapMap(
+                    innerMap.put("ah_yes", EdmElement.sequence(List.of(EdmElement.i32(34), EdmElement.i32(35))));
+                    innerMap.put("hmmm", EdmElement.optional(Optional.of(EdmElement.string("test"))));
+                    innerMap.put("uhhh", EdmElement.optional(
+                            EdmElement.map(
                                     Utils.make(LinkedHashMap::new, map -> {
-                                        map.put("b", EdmElement.wrapOptional(EdmElement.wrapFloat(16.5f)));
+                                        map.put("b", EdmElement.optional(EdmElement.f32(16.5f)));
                                     })
                             )
                     ));
@@ -93,11 +93,11 @@ public class EdmTests {
                 Triple::new
         );
 
-        var edmElement = EdmElement.wrapMap(
+        var edmElement = EdmElement.map(
                 Map.of(
-                        "ah_yes", EdmElement.wrapSequence(List.of(EdmElement.wrapInt(34), EdmElement.wrapInt(35))),
-                        "hmmm", EdmElement.wrapOptional(Optional.empty()),
-                        "uhhh", EdmElement.wrapOptional(EdmElement.wrapMap(Map.of("b", EdmElement.wrapOptional(EdmElement.wrapFloat(16.5f)))))
+                        "ah_yes", EdmElement.sequence(List.of(EdmElement.i32(34), EdmElement.i32(35))),
+                        "hmmm", EdmElement.optional(Optional.empty()),
+                        "uhhh", EdmElement.optional(EdmElement.map(Map.of("b", EdmElement.optional(EdmElement.f32(16.5f)))))
                 )
         );
 
@@ -113,15 +113,15 @@ public class EdmTests {
     @Test
     @DisplayName("edm encode / decode")
     public void edmEncodeAndDecode(){
-        var edmElement = EdmElement.wrapMap(
+        var edmElement = EdmElement.map(
                 Utils.make(LinkedHashMap::new, innerMap -> {
-                    innerMap.put("ah_yes", EdmElement.wrapSequence(List.of(EdmElement.wrapInt(17), EdmElement.wrapString("a"))));
-                    innerMap.put("hmmm", EdmElement.wrapOptional(Optional.of(EdmElement.wrapString("test"))));
+                    innerMap.put("ah_yes", EdmElement.sequence(List.of(EdmElement.i32(17), EdmElement.string("a"))));
+                    innerMap.put("hmmm", EdmElement.optional(Optional.of(EdmElement.string("test"))));
                     innerMap.put("uhhh",
-                            EdmElement.wrapOptional(
-                                    EdmElement.wrapMap(
+                            EdmElement.optional(
+                                    EdmElement.map(
                                             Utils.make(LinkedHashMap::new, map -> {
-                                                map.put("b", EdmElement.wrapOptional(EdmElement.wrapFloat(16.5f)));
+                                                map.put("b", EdmElement.optional(EdmElement.f32(16.5f)));
                                             })
                                     )
                             )
@@ -157,6 +157,6 @@ public class EdmTests {
     @Test
     @DisplayName("bytes formatting")
     public void bytesFormatting() {
-        System.out.println(EdmElement.wrapBytes(new byte[]{1, 2, 4, 8, 16}));
+        System.out.println(EdmElement.bytes(new byte[]{1, 2, 4, 8, 16}));
     }
 }

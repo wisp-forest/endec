@@ -20,63 +20,63 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
 
     @Override
     public void writeByte(SerializationContext ctx, byte value) {
-        this.consume(EdmElement.wrapByte(value));
+        this.consume(EdmElement.i8(value));
     }
 
     @Override
     public void writeShort(SerializationContext ctx, short value) {
-        this.consume(EdmElement.wrapShort(value));
+        this.consume(EdmElement.i16(value));
     }
 
     @Override
     public void writeInt(SerializationContext ctx, int value) {
-        this.consume(EdmElement.wrapInt(value));
+        this.consume(EdmElement.i32(value));
     }
 
     @Override
     public void writeLong(SerializationContext ctx, long value) {
-        this.consume(EdmElement.wrapLong(value));
+        this.consume(EdmElement.i64(value));
     }
 
     // ---
 
     @Override
     public void writeFloat(SerializationContext ctx, float value) {
-        this.consume(EdmElement.wrapFloat(value));
+        this.consume(EdmElement.f32(value));
     }
 
     @Override
     public void writeDouble(SerializationContext ctx, double value) {
-        this.consume(EdmElement.wrapDouble(value));
+        this.consume(EdmElement.f64(value));
     }
 
     // ---
 
     @Override
     public void writeVarInt(SerializationContext ctx, int value) {
-        this.consume(EdmElement.wrapInt(value));
+        this.consume(EdmElement.i32(value));
     }
 
     @Override
     public void writeVarLong(SerializationContext ctx, long value) {
-        this.consume(EdmElement.wrapLong(value));
+        this.consume(EdmElement.i64(value));
     }
 
     // ---
 
     @Override
     public void writeBoolean(SerializationContext ctx, boolean value) {
-        this.consume(EdmElement.wrapBoolean(value));
+        this.consume(EdmElement.bool(value));
     }
 
     @Override
     public void writeString(SerializationContext ctx, String value) {
-        this.consume(EdmElement.wrapString(value));
+        this.consume(EdmElement.string(value));
     }
 
     @Override
     public void writeBytes(SerializationContext ctx, byte[] bytes) {
-        this.consume(EdmElement.wrapBytes(bytes));
+        this.consume(EdmElement.bytes(bytes));
     }
 
     @Override
@@ -87,7 +87,7 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
             result[0] = encoded.value();
         });
 
-        this.consume(EdmElement.wrapOptional(Optional.ofNullable(result[0])));
+        this.consume(EdmElement.optional(Optional.ofNullable(result[0])));
     }
 
     // ---
@@ -132,7 +132,7 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
 
         @Override
         public void end() {
-            EdmSerializer.this.consume(EdmElement.wrapSequence(this.result));
+            EdmSerializer.this.consume(EdmElement.sequence(this.result));
         }
     }
 

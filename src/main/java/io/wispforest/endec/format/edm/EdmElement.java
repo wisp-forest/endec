@@ -125,64 +125,80 @@ public sealed class EdmElement<T> permits EdmMap {
                 });
             }
             default -> {
-                yield formatter.writeBlock(type.getDataName() + "(", ")", false, blockWriter -> {
+                yield formatter.writeBlock(type.formatName() + "(", ")", false, blockWriter -> {
                     blockWriter.write(Objects.toString(value));
                 });
             }
         };
     }
 
-    public static EdmElement<Byte> wrapByte(byte value) {
-        return new EdmElement<>(value, Type.BYTE);
+    public static EdmElement<Byte> i8(byte value) {
+        return new EdmElement<>(value, Type.I8);
     }
 
-    public static EdmElement<Short> wrapShort(short value) {
-        return new EdmElement<>(value, Type.SHORT);
+    public static EdmElement<Byte> u8(byte value) {
+        return new EdmElement<>(value, Type.U8);
     }
 
-    public static EdmElement<Integer> wrapInt(int value) {
-        return new EdmElement<>(value, Type.INT);
+    public static EdmElement<Short> i16(short value) {
+        return new EdmElement<>(value, Type.I16);
     }
 
-    public static EdmElement<Long> wrapLong(long value) {
-        return new EdmElement<>(value, Type.LONG);
+    public static EdmElement<Short> u16(short value) {
+        return new EdmElement<>(value, Type.U16);
     }
 
-    public static EdmElement<Float> wrapFloat(float value) {
-        return new EdmElement<>(value, Type.FLOAT);
+    public static EdmElement<Integer> i32(int value) {
+        return new EdmElement<>(value, Type.I32);
     }
 
-    public static EdmElement<Double> wrapDouble(double value) {
-        return new EdmElement<>(value, Type.DOUBLE);
+    public static EdmElement<Integer> u32(int value) {
+        return new EdmElement<>(value, Type.U32);
     }
 
-    public static EdmElement<Boolean> wrapBoolean(boolean value) {
+    public static EdmElement<Long> i64(long value) {
+        return new EdmElement<>(value, Type.I64);
+    }
+
+    public static EdmElement<Long> u64(long value) {
+        return new EdmElement<>(value, Type.U64);
+    }
+
+    public static EdmElement<Float> f32(float value) {
+        return new EdmElement<>(value, Type.F32);
+    }
+
+    public static EdmElement<Double> f64(double value) {
+        return new EdmElement<>(value, Type.F64);
+    }
+
+    public static EdmElement<Boolean> bool(boolean value) {
         return new EdmElement<>(value, Type.BOOLEAN);
     }
 
-    public static EdmElement<String> wrapString(String value) {
+    public static EdmElement<String> string(String value) {
         return new EdmElement<>(value, Type.STRING);
     }
 
-    public static EdmElement<byte[]> wrapBytes(byte[] value) {
+    public static EdmElement<byte[]> bytes(byte[] value) {
         return new EdmElement<>(value, Type.BYTES);
     }
 
-    public static EdmElement<Optional<EdmElement<?>>> wrapOptional(@Nullable EdmElement<?> value) {
-        return wrapOptional(Optional.ofNullable(value));
+    public static EdmElement<Optional<EdmElement<?>>> optional(@Nullable EdmElement<?> value) {
+        return optional(Optional.ofNullable(value));
     }
 
-    public static EdmElement<Optional<EdmElement<?>>> wrapOptional(Optional<EdmElement<?>> value) {
+    public static EdmElement<Optional<EdmElement<?>>> optional(Optional<EdmElement<?>> value) {
         if(value.isEmpty()) return EdmElement.EMPTY;
 
         return new EdmElement<>(value, Type.OPTIONAL);
     }
 
-    public static EdmElement<List<EdmElement<?>>> wrapSequence(List<EdmElement<?>> value) {
+    public static EdmElement<List<EdmElement<?>>> sequence(List<EdmElement<?>> value) {
         return new EdmElement<>(ImmutableList.copyOf(value), Type.SEQUENCE);
     }
 
-    public static EdmElement<Map<String, EdmElement<?>>> wrapMap(Map<String, EdmElement<?>> value) {
+    public static EdmElement<Map<String, EdmElement<?>>> map(Map<String, EdmElement<?>> value) {
         return new EdmElement<>(ImmutableMap.copyOf(value), Type.MAP);
     }
 
@@ -191,35 +207,26 @@ public sealed class EdmElement<T> permits EdmMap {
     }
 
     public enum Type {
-        BYTE("i8"),
-        SHORT("i16"),
-        INT("i32"),
-        LONG("i64"),
-        FLOAT("f32"),
-        DOUBLE("f64"),
+        I8,
+        U8,
+        I16,
+        U16,
+        I32,
+        U32,
+        I64,
+        U64,
+        F32,
+        F64,
 
-        BOOLEAN(),
-        STRING(),
-        BYTES(),
-        OPTIONAL(),
+        BOOLEAN,
+        STRING,
+        BYTES,
+        OPTIONAL,
 
-        SEQUENCE(),
-        MAP();
+        SEQUENCE,
+        MAP;
 
-        @Nullable
-        private final String alternativeName;
-
-        Type() {
-            this(null);
-        }
-
-        Type(@Nullable String dataName) {
-            this.alternativeName = dataName;
-        }
-
-        public String getDataName(){
-            if (this.alternativeName != null) return this.alternativeName;
-
+        public String formatName(){
             return this.name().toLowerCase();
         }
     }

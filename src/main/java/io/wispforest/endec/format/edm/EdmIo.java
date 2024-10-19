@@ -18,12 +18,12 @@ public class EdmIo {
 
     public static void encodeElementData(DataOutput output, EdmElement<?> data) throws IOException {
         switch (data.type()) {
-            case BYTE -> output.writeByte(data.<Byte>cast());
-            case SHORT -> output.writeShort(data.<Short>cast());
-            case INT -> output.writeInt(data.cast());
-            case LONG -> output.writeLong(data.cast());
-            case FLOAT -> output.writeFloat(data.cast());
-            case DOUBLE -> output.writeDouble(data.cast());
+            case I8, U8 -> output.writeByte(data.<Byte>cast());
+            case I16, U16 -> output.writeShort(data.<Short>cast());
+            case I32, U32 -> output.writeInt(data.cast());
+            case I64, U64 -> output.writeLong(data.cast());
+            case F32 -> output.writeFloat(data.cast());
+            case F64 -> output.writeDouble(data.cast());
             case BOOLEAN -> output.writeBoolean(data.cast());
             case STRING -> output.writeUTF(data.cast());
             case BYTES -> {
@@ -68,25 +68,29 @@ public class EdmIo {
 
     private static EdmElement<?> decodeElementData(DataInput input, byte type) throws IOException {
         return switch (EdmElement.Type.values()[type]) {
-            case BYTE -> EdmElement.wrapByte(input.readByte());
-            case SHORT -> EdmElement.wrapShort(input.readShort());
-            case INT -> EdmElement.wrapInt(input.readInt());
-            case LONG -> EdmElement.wrapLong(input.readLong());
-            case FLOAT -> EdmElement.wrapFloat(input.readFloat());
-            case DOUBLE -> EdmElement.wrapDouble(input.readDouble());
-            case BOOLEAN -> EdmElement.wrapBoolean(input.readBoolean());
-            case STRING -> EdmElement.wrapString(input.readUTF());
+            case I8 -> EdmElement.i8(input.readByte());
+            case U8 -> EdmElement.u8(input.readByte());
+            case I16 -> EdmElement.i16(input.readShort());
+            case U16 -> EdmElement.u16(input.readShort());
+            case I32 -> EdmElement.i32(input.readInt());
+            case U32 -> EdmElement.u32(input.readInt());
+            case I64 -> EdmElement.i64(input.readLong());
+            case U64 -> EdmElement.u64(input.readLong());
+            case F32 -> EdmElement.f32(input.readFloat());
+            case F64 -> EdmElement.f64(input.readDouble());
+            case BOOLEAN -> EdmElement.bool(input.readBoolean());
+            case STRING -> EdmElement.string(input.readUTF());
             case BYTES -> {
                 var result = new byte[input.readInt()];
                 input.readFully(result);
 
-                yield EdmElement.wrapBytes(result);
+                yield EdmElement.bytes(result);
             }
             case OPTIONAL -> {
                 if (input.readByte() != 0) {
-                    yield EdmElement.wrapOptional(Optional.of(decodeElementData(input, input.readByte())));
+                    yield EdmElement.optional(Optional.of(decodeElementData(input, input.readByte())));
                 } else {
-                    yield EdmElement.wrapOptional(Optional.empty());
+                    yield EdmElement.optional(Optional.empty());
                 }
             }
             case SEQUENCE -> {
@@ -98,9 +102,9 @@ public class EdmIo {
                         result.add(decodeElementData(input, input.readByte()));
                     }
 
-                    yield EdmElement.wrapSequence(result);
+                    yield EdmElement.sequence(result);
                 } else {
-                    yield EdmElement.wrapSequence(List.of());
+                    yield EdmElement.sequence(List.of());
                 }
             }
             case MAP -> {
