@@ -91,7 +91,7 @@ public sealed class EdmElement<T> permits EdmMap {
                     int idx = 0;
 
                     for (var entry : map.entrySet()) {
-                        formatter.write(entry.getKey() + ": ");
+                        formatter.write("\"" + entry.getKey() + "\": ");
                         entry.getValue().format(formatter);
 
                         if (idx < map.size() - 1) formatter.writeln(",");
@@ -117,6 +117,11 @@ public sealed class EdmElement<T> permits EdmMap {
                     optional.ifPresentOrElse(
                             edmElement -> edmElement.format(formatter),
                             () -> formatter.write(""));
+                });
+            }
+            case STRING -> {
+                yield formatter.writeBlock("string(\"", "\")", false, blockWriter -> {
+                    blockWriter.write(Objects.toString(value));
                 });
             }
             default -> {
