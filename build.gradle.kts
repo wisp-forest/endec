@@ -41,28 +41,15 @@ allprojects {
 
     tasks.named<Test>("test") {
         useJUnitPlatform()
-
         maxHeapSize = "1G"
 
-        testLogging { events("passed") }
-
-        failFast = true
-        ignoreFailures = false
-    }
-
-    // Custom task to check tests
-    val checkTests by tasks.registering {
-        dependsOn(rootProject.tasks.test)
-
-        doLast {
-            if (rootProject.tasks.test.get().state.failure != null) {
-                throw GradleException("Tests failed. Publishing to Maven Local is aborted.")
-            }
+        testLogging {
+            events("passed")
         }
     }
 
-    tasks.named("publishToMavenLocal") { this.dependsOn(checkTests) }
-    tasks.named("publish") { this.dependsOn(checkTests) }
+    tasks.publish { dependsOn(tasks.check) }
+    tasks.publishToMavenLocal { dependsOn(tasks.check) }
 
     val targetJavaVersion = 17
     tasks.withType<JavaCompile>().configureEach {
