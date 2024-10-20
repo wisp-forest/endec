@@ -31,32 +31,32 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
 
     @Override
     public byte readByte(SerializationContext ctx) {
-        return readPrimitive(Byte.class);
+        return readPrimitive(Number.class).byteValue();
     }
 
     @Override
     public short readShort(SerializationContext ctx) {
-        return readPrimitive(Short.class);
+        return readPrimitive(Number.class).shortValue();
     }
 
     @Override
     public int readInt(SerializationContext ctx) {
-        return readPrimitive(Integer.class);
+        return readPrimitive(Number.class).intValue();
     }
 
     @Override
     public long readLong(SerializationContext ctx) {
-        return readPrimitive(Long.class);
+        return readPrimitive(Number.class).longValue();
     }
 
     @Override
     public float readFloat(SerializationContext ctx) {
-        return readPrimitive(Float.class);
+        return readPrimitive(Number.class).floatValue();
     }
 
     @Override
     public double readDouble(SerializationContext ctx) {
-        return readPrimitive(Double.class);
+        return readPrimitive(Number.class).doubleValue();
     }
 
     private <T> T readPrimitive(Class<T> clazz){
