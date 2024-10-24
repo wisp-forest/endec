@@ -209,7 +209,7 @@ public interface Endec<T> {
      * Shorthand for {@link #dispatchedStruct(Function, Function, Endec, String)}
      * which always uses {@code type} as the {@code variantKey}
      */
-    static <T, K> Endec<T> dispatchedStruct(Function<K, StructEndec<? extends T>> variantToEndec, Function<T, K> instanceToVariant, Endec<K> variantEndec) {
+    static <T, K> StructEndec<T> dispatchedStruct(Function<K, StructEndec<? extends T>> variantToEndec, Function<T, K> instanceToVariant, Endec<K> variantEndec) {
         return dispatchedStruct(variantToEndec, instanceToVariant, variantEndec, "type");
     }
 
@@ -276,7 +276,7 @@ public interface Endec<T> {
      * }
      * }</pre>
      */
-    static <T, K> Endec<T> dispatchedStruct(Function<K, StructEndec<? extends T>> variantToEndec, Function<T, K> instanceToVariant, Endec<K> variantEndec, String variantKey) {
+    static <T, K> StructEndec<T> dispatchedStruct(Function<K, StructEndec<? extends T>> variantToEndec, Function<T, K> instanceToVariant, Endec<K> variantEndec, String variantKey) {
         return new StructEndec<>() {
             @Override
             public void encodeStruct(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, T value) {
@@ -302,7 +302,7 @@ public interface Endec<T> {
      * (check the documentation on that function for a complete usage example), but because this family of endecs does not
      * require {@code T} to be a struct, the variant identifier field cannot be merged with the rest and is encoded separately
      */
-    static <T, K> Endec<T> dispatched(Function<K, Endec<? extends T>> variantToEndec, Function<T, K> instanceToVariant, Endec<K> variantEndec) {
+    static <T, K> StructEndec<T> dispatched(Function<K, Endec<? extends T>> variantToEndec, Function<T, K> instanceToVariant, Endec<K> variantEndec) {
         return new StructEndec<>() {
             @Override
             public void encodeStruct(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, T value) {
