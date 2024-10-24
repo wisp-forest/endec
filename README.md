@@ -2,15 +2,15 @@
 
 endec is a format-agnostic serialization framework inspired by Rust's [serde](https://serde.rs) library and the Codec API from Mojang's [DataFixerUpper](https://github.com/mojang/datafixerupper).
 
-This repository contains the in-progress JAVA implementation. For a more-complete implementation without guarantees, see this repository's [reference project](https://github.com/gliscowo/endec.dart) on the glisco's profile (written in Dart).
+This repository contains the in-progress Java implementation. For a more-complete implementation without guarantees, see this repository's [reference project](https://github.com/gliscowo/endec.dart) on the glisco's profile (written in Dart).
 
 ### Repository Structure
 
 This project contains 3 submodules with the root src containing the core `endec` package which defines the API and contains some base implementations. The nested modules are as follows:
 
-- `gson`: Support for Json language using the [Gson]() Library
-- `jankson`: Support for Json/Json5 lanauge using the [Jankson]() Library
-- `netty`: Support for the binary format using the [Netty] Library
+- `gson`: Support for Json language using the [Gson](https://github.com/google/gson) Library
+- `jankson`: Support for Json/Json5 language using the [Jankson](https://github.com/falkreon/Jankson) Library
+- `netty`: Support for the binary format using the [Netty](https://github.com/netty/netty) Library
 
 ### Documentation
 
