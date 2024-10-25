@@ -39,13 +39,13 @@ public class EdmTests {
         Assertions.assertEquals(
                 """
                 map({
-                  ah_yes: sequence([
+                  "ah_yes": sequence([
                     i32(17),
-                    string(a)
+                    string("a")
                   ]),
-                  hmmm: optional(),
-                  uhhh: optional(map({
-                    b: optional(f32(16.5))
+                  "hmmm": optional(),
+                  "uhhh": optional(map({
+                    "b": optional(f32(16.5))
                   }))
                 })""",
                 edmElement.toString()
