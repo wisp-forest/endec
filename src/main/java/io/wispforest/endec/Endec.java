@@ -143,6 +143,10 @@ public interface Endec<T> {
         };
     }
 
+    static <T> Endec<T> recursive(UnaryOperator<Endec<T>> builderFunc) {
+        return new RecursiveEndec<>(builderFunc);
+    }
+
     static <T> StructEndec<T> unit(T instance) {
         return unit(() -> instance);
     }
@@ -463,6 +467,10 @@ public interface Endec<T> {
         return StructEndec.of(
                 (ctx, serializer, struct, value) -> struct.field(name, ctx, Endec.this, value),
                 (ctx, serializer, struct) -> struct.field(name, ctx, Endec.this));
+    }
+
+    default StructEndec<T> recursiveStruct(UnaryOperator<StructEndec<T>> builderFunc) {
+        return new RecursiveStructEndec<>(builderFunc);
     }
 
     default <S> StructField<S, T> fieldOf(String name, Function<S, T> getter) {
