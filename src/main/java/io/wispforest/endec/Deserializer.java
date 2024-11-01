@@ -67,14 +67,6 @@ public interface Deserializer<T> {
         }
 
         /**
-         * @deprecated Use {{@link #field(String, SerializationContext, Endec, Supplier)}}
-         */
-//        @Deprecated
-//        default <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
-//            return field(name, ctx, endec, defaultValue == null ? (Supplier<F>) (Object) null : () -> defaultValue);
-//        }
-
-        /**
          * Decode the value of field {@code name} using {@code endec}. If no
          * such field exists in the serialized data, then {@code defaultValue}
          * supplier result is used as the returned value
