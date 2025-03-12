@@ -1,5 +1,7 @@
 package io.wispforest.endec;
 
+import io.wispforest.endec.impl.AttributeEndecBuilder;
+import io.wispforest.endec.impl.AttributeStructEndecBuilder;
 import io.wispforest.endec.impl.StructEndecBuilder;
 import io.wispforest.endec.impl.StructField;
 import org.jetbrains.annotations.Nullable;
@@ -68,6 +70,10 @@ public interface StructEndec<T> extends Endec<T> {
     @Deprecated(forRemoval = true)
     static <T> StructEndec<T> unit(Supplier<T> instance) {
         return Endec.unit(instance);
+    }
+
+    static <T> AttributeStructEndecBuilder<T> ifAttr(SerializationAttribute attribute, StructEndec<T> endec) {
+        return new AttributeStructEndecBuilder<>(endec, attribute);
     }
 
     default <S> StructField<S, T> flatFieldOf(Function<S, T> getter) {
