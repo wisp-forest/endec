@@ -2,18 +2,15 @@ package io.wispforest.endec.impl;
 
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.SerializationAttributes;
-import io.wispforest.endec.annotations.SealedPolymorphic;
+import io.wispforest.endec.annotations.*;
+import io.wispforest.endec.util.reflection.*;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Reference2IntMap;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -22,7 +19,10 @@ public class ReflectiveEndecBuilder {
 
     public static final ReflectiveEndecBuilder SHARED_INSTANCE = new ReflectiveEndecBuilder();
 
-    private final Map<Class<?>, Endec<?>> classToEndec = new HashMap<>();
+    private final Map<Class<?>, Endec<?>> classToEndec = new LinkedHashMap<>();
+
+    private final Map<Class<? extends Annotation>, AnnotatedAdjuster<? extends Annotation>> classToTypeAdjuster = new LinkedHashMap<>();
+    private final Map<Class<?>, MethodTypeCheckBypass> classToAlternativeChecker = new LinkedHashMap<>();
 
     public ReflectiveEndecBuilder(Consumer<ReflectiveEndecBuilder> defaultsSetup) {
         defaultsSetup.accept(this);
@@ -54,6 +54,127 @@ public class ReflectiveEndecBuilder {
         return this;
     }
 
+    public <A extends Annotation> ReflectiveEndecBuilder registerTypeAdjuster(Class<A> clazz, AnnotatedAdjuster<A> adjuster) {
+        if (this.classToTypeAdjuster.containsKey(clazz)) {
+            throw new IllegalStateException("Class '" + clazz.getName() + "' already has an associated AnnotatedAdjuster");
+        }
+
+        this.classToTypeAdjuster.put(clazz, adjuster);
+        return this;
+    }
+
+    public ReflectiveEndecBuilder registerMethodTypeCheckBypass(Class<?> clazz, String ...methodNames) {
+        var validMethodsToBypass = Set.of(methodNames);
+
+        return registerMethodTypeCheckBypass(clazz, method -> validMethodsToBypass.contains(method.getName()));
+    }
+
+    public ReflectiveEndecBuilder registerMethodTypeCheckBypass(Class<?> clazz, MethodTypeCheckBypass restorer) {
+        if (this.classToAlternativeChecker.containsKey(clazz)) {
+            throw new IllegalStateException("Class '" + clazz.getName() + "' already has an associated GenericRestorer");
+        }
+
+        this.classToAlternativeChecker.put(clazz, restorer);
+        return this;
+    }
+
+    public MethodTypeCheckBypass getAlternativeGenericTypeCheck(Class<?> clazz) {
+        var alternativeCheck = this.classToAlternativeChecker.get(clazz);
+
+        if (alternativeCheck != null) return alternativeCheck;
+
+        if (clazz.isAnnotationPresent(GenericTypeCheckBypass.class)) {
+            var validMethodsToBypass = Set.of(clazz.getAnnotation(GenericTypeCheckBypass.class).methodsToBypass());
+
+            return method -> validMethodsToBypass.contains(method.getName());
+        }
+
+        return MethodTypeCheckBypass.FALSE;
+    }
+
+    public Endec<?> getAnnotated(AnnotatedElement annotatedElement) {
+        return getAnnotated(annotatedElement, ReflectionUtils.getBaseType(annotatedElement));
+    }
+
+    public Endec<?> getAnnotated(AnnotatedElement annotatedElement, @Nullable Type baseType) {
+        var endec = getAnnotated(ReflectionUtils.getAnnotatedType(annotatedElement), baseType);;
+
+        // TODO: ATTEMPT TO KEEP BINARY COMPAT WITH OLDER ENDEC VERSIONS
+        if (annotatedElement instanceof RecordComponent component && component.isAnnotationPresent(NullableComponent.class)) {
+            endec = endec.nullableOf();
+        }
+
+        return endec;
+    }
+
+    public Endec<?> getAnnotated(AnnotatedType annotatedType) {
+        return getAnnotated(annotatedType, null);
+    }
+
+    public Endec<?> getAnnotated(AnnotatedType annotatedType, @Nullable Type baseType) {
+        var type = baseType == null ? annotatedType.getType() : baseType;
+
+        Endec<?> endec = null;
+
+        if(annotatedType instanceof AnnotatedArrayType annotatedArrayType) {
+            Class<?> arrayClazz = (Class<?>) ((type instanceof GenericArrayType) ? baseType : type);
+
+            if(arrayClazz == null) throw new IllegalStateException("Unable to get the required base Array class to get the component type!");
+
+            endec = createArrayEndec(arrayClazz.componentType(), annotatedArrayType.getAnnotatedGenericComponentType());
+        } else if (type instanceof Class<?> clazz) {
+            endec = getOrNull(clazz);
+        } else if (annotatedType instanceof AnnotatedParameterizedType annotatedParameterizedType) {
+            var annotatedTypeArgs = annotatedParameterizedType.getAnnotatedActualTypeArguments();
+            var parameterizedType = ((ParameterizedType) type);
+
+            if (parameterizedType.getRawType() instanceof Class<?> clazz) {
+                if (clazz.equals(Map.class)) {
+                    endec = annotatedTypeArgs[0].getType() == String.class
+                            ? this.getAnnotated(annotatedTypeArgs[1]).mapOf()
+                            : Endec.map(this.getAnnotated(annotatedTypeArgs[0]), this.getAnnotated(annotatedTypeArgs[1]));
+                } else if (clazz.equals(List.class)) {
+                    endec = this.getAnnotated(annotatedTypeArgs[0]).listOf();
+                } else if (clazz.equals(Set.class)) {
+                    endec = this.getAnnotated(annotatedTypeArgs[0]).setOf();
+                } else if (clazz.equals(Optional.class)) {
+                    endec = this.getAnnotated(annotatedTypeArgs[0]).optionalOf();
+                } else if(isGenericObject(clazz)) {
+                    endec = ObjectEndec.create(this, clazz, type);
+                } else {
+                    endec = this.getOrNull(clazz);
+                }
+            }
+        }
+
+        if (endec == null) {
+            throw new IllegalStateException("No Endec available for the given type '" + type + "'");
+        }
+
+        endec = adjustEndecWithType(annotatedType, endec);
+
+        return endec;
+    }
+
+    private <T> Endec<T> adjustEndecWithType(AnnotatedType annotatedType, Endec<T> endec) {
+        for (var clazz : this.classToTypeAdjuster.keySet()) {
+            var results = applyAdjusterIfPresent(clazz, annotatedType, endec);
+
+            if (!results.allowFutherAdjustments()) return results.endec();
+
+            if (!results.equals(AdjustmentResult.empty())) endec = results.endec();
+        }
+
+        return endec;
+    }
+
+    private <A extends Annotation, T> AdjustmentResult<T> applyAdjusterIfPresent(Class<A> annotationClazz, AnnotatedType annotatedType, Endec<T> endec) {
+        if(!annotatedType.isAnnotationPresent(annotationClazz)) return AdjustmentResult.empty();
+
+        return ((AnnotatedAdjuster<A>) this.classToTypeAdjuster.get(annotationClazz))
+                .adjustEndec(annotatedType, annotatedType.getAnnotation(annotationClazz), endec);
+    }
+
     /**
      * Get (or potentially create) the endec associated with {@code type}. In addition
      * to {@link #get(Class)}, this method uses type parameter information to automatically
@@ -64,6 +185,7 @@ public class ReflectiveEndecBuilder {
     @SuppressWarnings("unchecked")
     public Endec<?> get(Type type) {
         if (type instanceof Class<?> clazz) return this.get(clazz);
+        if (type instanceof AnnotatedElement annotatedElement) return this.getAnnotated(annotatedElement);
 
         var parameterized = (ParameterizedType) type;
         var raw = (Class<?>) parameterized.getRawType();
@@ -91,7 +213,22 @@ public class ReflectiveEndecBuilder {
             return this.get(typeArgs[0]).optionalOf();
         }
 
+        if (Record.class.isAssignableFrom(raw)) {
+            return RecordEndec.create(this, (Class<? extends Record>) raw, typeArgs);
+        }
+
+        if (isGenericObject(raw)) {
+            return ObjectEndec.create(this, raw, typeArgs);
+        }
+
         return this.get(raw);
+    }
+
+    private static boolean isGenericObject(Class<?> clazz) {
+        return !(Record.class.isAssignableFrom(clazz)
+                || clazz.isEnum()
+                || clazz.isArray()
+                || clazz.isAnnotationPresent(SealedPolymorphic.class));
     }
 
     /**
@@ -119,31 +256,94 @@ public class ReflectiveEndecBuilder {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private <T> @Nullable Endec<T> getOrNull(Class<T> clazz) {
-        Endec<T> serializer = (Endec<T>) this.classToEndec.get(clazz);
+        Endec<T> endec = (Endec<T>) this.classToEndec.get(clazz);
 
-        if (serializer == null) {
+        if (endec != null) return endec;
+
+        endec = (Endec<T>) getDefinedEndec(clazz);
+
+        if (endec == null) {
             if (Record.class.isAssignableFrom(clazz)) {
-                serializer = (Endec<T>) RecordEndec.create(this, (Class<? extends Record>) clazz);
+                endec = (Endec<T>) RecordEndec.create(this, (Class<? extends Record>) clazz);
             } else if (clazz.isEnum()) {
-                serializer = (Endec<T>) Endec.forEnum((Class<? extends Enum>) clazz);
+                endec = (Endec<T>) Endec.forEnum((Class<? extends Enum>) clazz);
             } else if (clazz.isArray()) {
-                serializer = (Endec<T>) this.createArrayEndec(clazz.getComponentType());
+                endec = (Endec<T>) this.createArrayEndec(clazz.getComponentType(), null);
             } else if (clazz.isAnnotationPresent(SealedPolymorphic.class)) {
-                serializer = (Endec<T>) this.createSealedEndec(clazz);
+                endec = (Endec<T>) this.createSealedEndec(clazz);
             } else {
-                return null;
+                endec = ObjectEndec.create(this, clazz);
             }
-
-            this.classToEndec.put(clazz, serializer);
         }
 
+        this.classToEndec.put(clazz, endec);
 
-        return serializer;
+        return endec;
+    }
+
+    <T> Endec<T> getExistingEndec(Class<T> clazz) {
+        return (Endec<T>) this.classToEndec.get(clazz);
+    }
+
+    private Endec<?> getDefinedEndec(Class<?> clazz) {
+        var possibleEndecGetter = Arrays.stream(clazz.getDeclaredFields())
+                .filter(field -> Modifier.isStatic(field.getModifiers()) && Modifier.isPublic(field.getModifiers()))
+                .filter(field -> field.isAnnotationPresent(DefinedEndecGetter.class))
+                .toList();
+
+        if (!possibleEndecGetter.isEmpty()) {
+            if (possibleEndecGetter.size() > 1) throw new IllegalStateException("Multiple Defined Endec fields within the given class: " + clazz);
+
+            var field = possibleEndecGetter.get(0);
+
+            if (!ReflectionUtils.isTypeCompatible(ReflectionUtils.createParameterizedType(Endec.class, clazz), field.getGenericType())) {
+                throw new IllegalStateException("Unable to use the given field [" + field + "] due to the type not matching the following class: " + clazz);
+            }
+
+            try {
+                return (Endec<?>) field.get(null);
+            } catch (Throwable e) {
+                throw new RuntimeException("A clazz [" + clazz + "] with a Defined Endec field was unable to be gotten due to an error!", e);
+            }
+        } else if (clazz.isAnnotationPresent(DefinedEndecGetter.class)) {
+            // Places where the given endec method will be searched:
+            // - If the given annotation has a supplied method name
+            // - Or use `getEndec` or `endec`
+
+            var customGetterName = clazz.getAnnotation(DefinedEndecGetter.class).endecGetterName();
+
+            List<String> methodNames = new ArrayList<>();
+
+            if (customGetterName.isBlank()) {
+                methodNames.add("endec");
+                methodNames.add("getEndec");
+            } else {
+                methodNames.add(customGetterName);
+            }
+
+            for (var methodName : methodNames) {
+                var getter = ReflectionUtils.getZeroArgMethodWithCompatibleReturnType(methodName, clazz, ReflectionUtils.createParameterizedType(Endec.class, clazz), Modifier::isStatic);
+
+                if (getter == null) continue;
+
+                try {
+                    return (Endec<?>) getter.invoke(null);
+                } catch (Throwable e) {
+                    throw new RuntimeException("A clazz [" + clazz + "] with a DefinedEndec was unable to be gotten due to an error!", e);
+                }
+            }
+
+            throw new IllegalStateException("Unable to find any method on the given class [" + clazz + "] with the given names: " + methodNames.toString());
+        }
+
+        return null;
     }
 
     @SuppressWarnings("unchecked")
-    private Endec<?> createArrayEndec(Class<?> elementClass) {
-        var elementEndec = (Endec<Object>) this.get(elementClass);
+    private Endec<?> createArrayEndec(Class<?> elementClass, @Nullable AnnotatedType genericComponentType) {
+        if(elementClass.equals(byte.class) || elementClass.equals(Byte.class)) return Endec.BYTES;
+
+        var elementEndec = (Endec<Object>) ((genericComponentType == null) ? this.get(elementClass) : this.getAnnotated(genericComponentType));
 
         return elementEndec.listOf().xmap(list -> {
             int length = list.size();
@@ -263,5 +463,61 @@ public class ReflectiveEndecBuilder {
                 .registerIfMissing(BuiltInEndecs.UUID, UUID.class)
                 .registerIfMissing(BuiltInEndecs.DATE, Date.class)
                 .registerIfMissing(BuiltInEndecs.BITSET, BitSet.class);
+
+        builder.registerTypeAdjuster(IsNullable.class, new AnnotatedAdjuster<>() {
+            @Override
+            public <T> AdjustmentResult<T> adjustEndec(AnnotatedType annotatedType, IsNullable annotation, Endec<T> base) {
+                return AdjustmentResult.of(base.nullableOf());
+            }
+        });
+
+        builder.registerTypeAdjuster(IsVarInt.class, new AnnotatedAdjuster<>() {
+            @Override
+            public <T> AdjustmentResult<T> adjustEndec(AnnotatedType annotatedType, IsVarInt annotation, Endec<T> base) {
+                if (annotatedType.getType() instanceof Class<?> clazz) {
+                    if (clazz.equals(int.class) || clazz.equals(Integer.class)) {
+                        return AdjustmentResult.of((Endec<T>) Endec.VAR_INT);
+                    } else if (clazz.equals(long.class) || clazz.equals(Long.class)) {
+                        return AdjustmentResult.of((Endec<T>) Endec.VAR_LONG);
+                    }
+                }
+
+                return AdjustmentResult.empty();
+            }
+        });
+
+        builder.registerTypeAdjuster(RangedFloat.class, new AnnotatedAdjuster<>() {
+            @Override
+            public <T> AdjustmentResult<T> adjustEndec(AnnotatedType annotatedType, RangedFloat annotation, Endec<T> base) {
+                if (annotatedType.getType() instanceof Class<?> clazz) {
+                    if(ReflectionUtils.isIntegerType(clazz)) {
+                        throw new IllegalStateException("Can not apply RangedFloat to a integer type, use RangedInteger instead!");
+                    } else if(ReflectionUtils.isFloatType(clazz)) {
+                        return AdjustmentResult.of((Endec<T>) rangedUnsafe(base, ReflectionUtils.castFloat(clazz, annotation.min()), ReflectionUtils.castFloat(clazz, annotation.max()), annotation.throwError()));
+                    }
+                }
+
+                return AdjustmentResult.empty();
+            }
+        });
+
+        builder.registerTypeAdjuster(RangedInteger.class, new AnnotatedAdjuster<>() {
+            @Override
+            public <T> AdjustmentResult<T> adjustEndec(AnnotatedType annotatedType, RangedInteger annotation, Endec<T> base) {
+                if (annotatedType.getType() instanceof Class<?> clazz) {
+                    if(ReflectionUtils.isFloatType(clazz)) {
+                        throw new IllegalStateException("Can not apply RangedInteger to a integer type, use RangedFloat instead!");
+                    } else if(ReflectionUtils.isIntegerType(clazz)) {
+                        return AdjustmentResult.of((Endec<T>) rangedUnsafe(base, ReflectionUtils.castInteger(clazz, annotation.min()), ReflectionUtils.castInteger(clazz, annotation.max()), annotation.throwError()));
+                    }
+                }
+
+                return AdjustmentResult.empty();
+            }
+        });
+    }
+
+    private static <N extends Number & Comparable<N>> Endec<N> rangedUnsafe(Endec<?> endec, @Nullable Number min, @Nullable Number max, boolean throwError) {
+        return Endec.ranged((Endec<N>) endec, (N) min, (N) max, throwError);
     }
 }
