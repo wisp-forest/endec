@@ -102,6 +102,10 @@ public interface Endec<T> {
      * keys to values serialized using this endec
      */
     default Endec<Map<String, T>> mapOf() {
+        return mapOf(HashMap::new);
+    }
+
+    default <M extends Map<String, T>> Endec<M> mapOf(IntFunction<M> mapConstructor) {
         return of((ctx, serializer, map) -> {
             try (var mapState = serializer.map(ctx, this, map.size())) {
                 map.forEach(mapState::entry);
@@ -109,11 +113,19 @@ public interface Endec<T> {
         }, (ctx, deserializer) -> {
             var mapState = deserializer.map(ctx, this);
 
-            var map = new HashMap<String, T>(mapState.estimatedSize());
+            var map = mapConstructor.apply(mapState.estimatedSize());
             mapState.forEachRemaining(entry -> map.put(entry.getKey(), entry.getValue()));
 
             return map;
         });
+    }
+
+    default <K> Endec<Map<K, T>> mapOf(Function<K, String> keyToString, Function<String, K> stringToKey) {
+        return mapOf(HashMap::new, keyToString, stringToKey);
+    }
+
+    default <K, M extends Map<K, T>> Endec<M> mapOf(IntFunction<M> mapConstructor, Function<K, String> keyToString, Function<String, K> stringToKey) {
+        return Endec.map(mapConstructor, keyToString, stringToKey, this);
     }
 
     /**
@@ -172,12 +184,16 @@ public interface Endec<T> {
         ).listOf().xmap(entries -> Map.ofEntries(entries.toArray(Map.Entry[]::new)), kvMap -> List.copyOf(kvMap.entrySet()));
     }
 
+    static <K, V> Endec<Map<K, V>> map(Function<K, String> keyToString, Function<String, K> stringToKey, Endec<V> valueEndec) {
+        return map(HashMap::new, keyToString, stringToKey, valueEndec);
+    }
+
     /**
      * Create a new endec which serializes a map from keys encoded as strings using
      * {@code keyToString} and decoded using {@code stringToKey} to values serialized
      * using {@code valueEndec}
      */
-    static <K, V> Endec<Map<K, V>> map(Function<K, String> keyToString, Function<String, K> stringToKey, Endec<V> valueEndec) {
+    static <K, V, M extends Map<K, V>> Endec<M> map(IntFunction<M> mapConstructor, Function<K, String> keyToString, Function<String, K> stringToKey, Endec<V> valueEndec) {
         return of((ctx, serializer, map) -> {
             try (var mapState = serializer.map(ctx, valueEndec, map.size())) {
                 map.forEach((k, v) -> mapState.entry(keyToString.apply(k), v));
@@ -185,11 +201,15 @@ public interface Endec<T> {
         }, (ctx, deserializer) -> {
             var mapState = deserializer.map(ctx, valueEndec);
 
-            var map = new HashMap<K, V>(mapState.estimatedSize());
+            var map = mapConstructor.apply(mapState.estimatedSize());
             mapState.forEachRemaining(entry -> map.put(stringToKey.apply(entry.getKey()), entry.getValue()));
 
             return map;
         });
+    }
+
+    static <E extends Enum<E>> Endec<E> forEnum(Class<E> enumClass) {
+        return forEnum(enumClass, Enum::name);
     }
 
     /**
@@ -198,12 +218,23 @@ public interface Endec<T> {
      * In a human-readable format, the endec serializes to the {@linkplain Enum#name() constant's name},
      * and to its {@linkplain Enum#ordinal() ordinal} otherwise
      */
-    static <E extends Enum<E>> Endec<E> forEnum(Class<E> enumClass) {
+    static <E extends Enum<E>> Endec<E> forEnum(Class<E> enumClass, Function<E, String> nameLookup) {
+        var enumValues = enumClass.getEnumConstants();
+        var serializedNames = new HashMap<String, E>();
+
+        for (E enumValue : enumValues) serializedNames.put(nameLookup.apply(enumValue), enumValue);
+
         return ifAttr(
                 SerializationAttributes.HUMAN_READABLE,
-                STRING.xmap(name -> Arrays.stream(enumClass.getEnumConstants()).filter(e -> e.name().equals(name)).findFirst().get(), Enum::name)
+                STRING.xmap(name -> {
+                    var entry = serializedNames.get(name);
+
+                    if (entry == null) throw new IllegalStateException(enumClass.getCanonicalName() + " constant with the name of [" + name + "] could not be located!");
+
+                    return entry;
+                }, nameLookup)
         ).orElse(
-                VAR_INT.xmap(ordinal -> enumClass.getEnumConstants()[ordinal], Enum::ordinal)
+                VAR_INT.xmap(ordinal -> enumValues[ordinal], Enum::ordinal)
         );
     }
 
@@ -477,11 +508,17 @@ public interface Endec<T> {
         return new StructField<>(name, this, getter);
     }
 
+    default <S> StructField<S, @Nullable T> optionalFieldOf(String name, Function<S, @Nullable T> getter) {
+        return optionalFieldOf(name, getter, (T) null);
+    }
+
     default <S> StructField<S, T> optionalFieldOf(String name, Function<S, T> getter, @Nullable T defaultValue) {
         return new StructField<>(name, this.optionalOf().xmap(optional -> optional.orElse(defaultValue), Optional::ofNullable), getter, defaultValue);
     }
 
     default <S> StructField<S, T> optionalFieldOf(String name, Function<S, T> getter, Supplier<@Nullable T> defaultValue) {
+        Objects.requireNonNull(defaultValue, "Supplier was found to be null which is not permitted for optionalFieldOf");
+
         return new StructField<>(name, this.optionalOf().xmap(optional -> optional.orElseGet(defaultValue), Optional::ofNullable), getter, defaultValue);
     }
 
