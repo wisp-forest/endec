@@ -177,10 +177,12 @@ public sealed class EdmElement<T> permits EdmMap {
     }
 
     public static EdmElement<String> string(String value) {
+        Objects.requireNonNull(value, "EDM format does not allow for null String as a value!");
         return new EdmElement<>(value, Type.STRING);
     }
 
     public static EdmElement<byte[]> bytes(byte[] value) {
+        Objects.requireNonNull(value, "EDM format does not allow for null byte arrays as a value!");
         return new EdmElement<>(value, Type.BYTES);
     }
 
@@ -195,14 +197,17 @@ public sealed class EdmElement<T> permits EdmMap {
     }
 
     public static EdmElement<List<EdmElement<?>>> sequence(List<EdmElement<?>> value) {
+        Objects.requireNonNull(value, "EDM format does not allow for null List as a value!");
         return new EdmElement<>(ImmutableList.copyOf(value), Type.SEQUENCE);
     }
 
     public static EdmElement<Map<String, EdmElement<?>>> map(Map<String, EdmElement<?>> value) {
+        Objects.requireNonNull(value, "EDM format does not allow for null Map as a value!");
         return new EdmElement<>(ImmutableMap.copyOf(value), Type.MAP);
     }
 
     public static EdmElement<Map<String, EdmElement<?>>> consumeMap(Map<String, EdmElement<?>> value) {
+        Objects.requireNonNull(value, "EDM format does not allow for null Map as a value!");
         return new EdmElement<>(Collections.unmodifiableMap(value), Type.MAP); // Hangry
     }
 
