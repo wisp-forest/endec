@@ -5,10 +5,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/**
- * @deprecated Please use {@link IsNullable} instead!
- */
-@Target(ElementType.RECORD_COMPONENT)
+@Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@Deprecated
-public @interface NullableComponent {}
+public @interface GenericTypeCheckBypass {
+    String[] methodsToBypass();
+}

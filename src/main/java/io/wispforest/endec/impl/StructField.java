@@ -5,18 +5,21 @@ import io.wispforest.endec.Endec;
 import io.wispforest.endec.Serializer;
 import io.wispforest.endec.StructEndec;
 import io.wispforest.endec.SerializationContext;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public sealed class StructField<S, F> permits StructField.Flat {
+public sealed class StructField<S, F> permits StructField.Flat, StructField.MutableField {
 
     protected final String name;
     protected final Endec<F> endec;
     protected final Function<S, F> getter;
     protected final @Nullable Supplier<F> defaultValueFactory;
 
+    @ApiStatus.Internal
     public StructField(String name, Endec<F> endec, Function<S, F> getter, @Nullable Supplier<F> defaultValueFactory) {
         this.name = name;
         this.endec = endec;
@@ -24,10 +27,12 @@ public sealed class StructField<S, F> permits StructField.Flat {
         this.defaultValueFactory = defaultValueFactory;
     }
 
+    @ApiStatus.Internal
     public StructField(String name, Endec<F> endec, Function<S, F> getter, @Nullable F defaultValue) {
         this(name, endec, getter, () -> defaultValue);
     }
 
+    @ApiStatus.Internal
     public StructField(String name, Endec<F> endec, Function<S, F> getter) {
         this(name, endec, getter, (Supplier<F>) null);
     }
@@ -50,6 +55,7 @@ public sealed class StructField<S, F> permits StructField.Flat {
 
     public static final class Flat<S, F> extends StructField<S, F> {
 
+        @ApiStatus.Internal
         public Flat(StructEndec<F> endec, Function<S, F> getter) {
             super("", endec, getter, (Supplier<F>) null);
         }
@@ -72,6 +78,27 @@ public sealed class StructField<S, F> permits StructField.Flat {
     public static class StructFieldException extends IllegalStateException {
         public StructFieldException(String message, Throwable cause) {
             super(message, cause);
+        }
+    }
+
+    public static final class MutableField<S, F> extends StructField<S, F> {
+
+        private final BiConsumer<S, F> setter;
+
+        public MutableField(String name, Endec<F> endec, Function<S, F> getter, BiConsumer<S, F> setter) {
+            super(name, endec, getter, (Supplier<F>) null);
+
+            this.setter = setter;
+        }
+
+        public void decodeField(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct, S s) {
+            try {
+                F f = struct.field(this.name, ctx, this.endec, this.defaultValueFactory);
+
+                setter.accept(s, f);
+            } catch (Exception e) {
+                throw new StructFieldException("Exception occurred when decoding a given StructField: [Field: " + this.name + "]", e);
+            }
         }
     }
 }
