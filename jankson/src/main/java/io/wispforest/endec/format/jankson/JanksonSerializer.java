@@ -6,6 +6,7 @@ import io.wispforest.endec.SerializationAttributes;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.Serializer;
 import io.wispforest.endec.SerializationContext;
+import io.wispforest.endec.temp.OptionalFieldFlag;
 import io.wispforest.endec.util.RecursiveSerializer;
 
 import java.util.Optional;
@@ -100,14 +101,10 @@ public class JanksonSerializer extends RecursiveSerializer<JsonElement> implemen
 
     @Override
     public <V> void writeOptional(SerializationContext ctx, Endec<V> endec, Optional<V> optional) {
-        if (this.isWritingStructField()) {
-            optional.ifPresent(value -> endec.encode(ctx, this, value));
-        } else {
-            optional.ifPresentOrElse(
-                    value -> endec.encode(ctx, this, value),
-                    () -> this.consume(JsonNull.INSTANCE)
-            );
-        }
+        optional.ifPresentOrElse(
+                value -> endec.encode(ctx, this, value),
+                () -> this.consume(JsonNull.INSTANCE)
+        );
     }
 
     // ---
@@ -161,10 +158,17 @@ public class JanksonSerializer extends RecursiveSerializer<JsonElement> implemen
 
         @Override
         public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value) {
+            boolean mayOmit = ctx.hasAttribute(OptionalFieldFlag.INSTANCE);
+
             JanksonSerializer.this.frame(encoded -> {
                 endec.encode(ctx, JanksonSerializer.this, value);
-                this.result.put(name, encoded.require("struct field"));
-            }, true);
+
+                var element = encoded.require("struct field");
+
+                if (mayOmit && element.equals(JsonNull.INSTANCE)) return;
+
+                this.result.put(name, element);
+            }, false);
 
             return this;
         }

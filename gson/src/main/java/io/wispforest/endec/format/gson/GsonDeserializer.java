@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import io.wispforest.endec.*;
+import io.wispforest.endec.temp.OptionalFieldFlag;
 import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
@@ -269,12 +270,20 @@ public class GsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
 
         @Override
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
+            boolean mayOmit = ctx.hasAttribute(OptionalFieldFlag.INSTANCE);
+
             var element = this.object.get(name);
-            if (element == null) return defaultValue;
+            if (element == null) {
+                if(!mayOmit) {
+                    throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
+                }
+
+                return defaultValue;
+            }
             return GsonDeserializer.this.frame(
                     () -> element,
                     () -> endec.decode(ctx, GsonDeserializer.this),
-                    true
+                    false
             );
         }
     }

@@ -9,4 +9,5 @@ module endec {
     exports io.wispforest.endec.format.data;
     exports io.wispforest.endec.format.edm;
     exports io.wispforest.endec.format.forwarding;
+    exports io.wispforest.endec.temp;
 }

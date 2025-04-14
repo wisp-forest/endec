@@ -2,6 +2,7 @@ package io.wispforest.endec.format.edm;
 
 import io.wispforest.endec.*;
 import io.wispforest.endec.SerializationContext;
+import io.wispforest.endec.temp.OptionalFieldFlag;
 import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
@@ -240,12 +241,20 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
 
         @Override
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable F defaultValue) {
+            boolean mayOmit = ctx.hasAttribute(OptionalFieldFlag.INSTANCE);
+
             var element = this.map.get(name);
-            if (element == null) return defaultValue;
+            if (element == null) {
+                if(!mayOmit) {
+                    throw new IllegalStateException("Field '" + name + "' was missing from serialized data, but no default value was provided");
+                }
+
+                return defaultValue;
+            }
             return EdmDeserializer.this.frame(
                     () -> element,
                     () -> endec.decode(ctx, EdmDeserializer.this),
-                    true
+                    false
             );
         }
     }

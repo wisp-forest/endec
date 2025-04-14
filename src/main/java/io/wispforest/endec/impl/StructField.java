@@ -5,6 +5,7 @@ import io.wispforest.endec.Endec;
 import io.wispforest.endec.Serializer;
 import io.wispforest.endec.StructEndec;
 import io.wispforest.endec.SerializationContext;
+import io.wispforest.endec.temp.OptionalFieldFlag;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
@@ -33,6 +34,12 @@ public sealed class StructField<S, F> permits StructField.Flat {
     }
 
     public void encodeField(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, S instance) {
+        if (this.defaultValueFactory != null) {
+            ctx = ctx.withAttributes(OptionalFieldFlag.INSTANCE);
+        } else if(ctx.hasAttribute(OptionalFieldFlag.INSTANCE)) {
+            ctx = ctx.withoutAttributes(OptionalFieldFlag.INSTANCE);
+        }
+
         try {
             struct.field(this.name, ctx, this.endec, this.getter.apply(instance));
         } catch (Exception e) {
@@ -41,6 +48,12 @@ public sealed class StructField<S, F> permits StructField.Flat {
     }
 
     public F decodeField(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct) {
+        if (this.defaultValueFactory != null) {
+            ctx = ctx.withAttributes(OptionalFieldFlag.INSTANCE);
+        } else if(ctx.hasAttribute(OptionalFieldFlag.INSTANCE)) {
+            ctx = ctx.withoutAttributes(OptionalFieldFlag.INSTANCE);
+        }
+
         try {
             return this.defaultValueFactory != null
                     ? struct.field(this.name, ctx, this.endec, this.defaultValueFactory.get())
