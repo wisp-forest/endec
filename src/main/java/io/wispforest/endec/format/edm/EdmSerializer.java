@@ -1,10 +1,15 @@
 package io.wispforest.endec.format.edm;
 
-import io.wispforest.endec.*;
+import io.wispforest.endec.Endec;
+import io.wispforest.endec.SelfDescribedSerializer;
 import io.wispforest.endec.SerializationContext;
+import io.wispforest.endec.Serializer;
 import io.wispforest.endec.util.RecursiveSerializer;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
 
 public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements SelfDescribedSerializer<EdmElement<?>> {
 

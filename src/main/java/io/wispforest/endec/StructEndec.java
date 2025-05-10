@@ -1,12 +1,9 @@
 package io.wispforest.endec;
 
-import io.wispforest.endec.impl.AttributeEndecBuilder;
 import io.wispforest.endec.impl.AttributeStructEndecBuilder;
 import io.wispforest.endec.impl.StructEndecBuilder;
 import io.wispforest.endec.impl.StructField;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;

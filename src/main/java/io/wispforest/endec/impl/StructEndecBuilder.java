@@ -1,9 +1,9 @@
 package io.wispforest.endec.impl;
 
 import io.wispforest.endec.Deserializer;
+import io.wispforest.endec.SerializationContext;
 import io.wispforest.endec.Serializer;
 import io.wispforest.endec.StructEndec;
-import io.wispforest.endec.SerializationContext;
 
 import java.util.function.BiFunction;
 import java.util.function.Function;

@@ -8,8 +8,6 @@ import io.wispforest.endec.util.reflection.*;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
-import org.checkerframework.checker.units.qual.A;
-import org.checkerframework.checker.units.qual.N;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;

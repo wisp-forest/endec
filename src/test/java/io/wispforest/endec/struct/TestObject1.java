@@ -1,7 +1,5 @@
 package io.wispforest.endec.struct;
 
-import io.wispforest.endec.annotations.IsNullable;
-
 import java.util.*;
 
 public class TestObject1 {
