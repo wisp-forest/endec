@@ -209,7 +209,11 @@ public interface Endec<T> {
     }
 
     static <E extends Enum<E>> Endec<E> forEnum(Class<E> enumClass) {
-        return forEnum(enumClass, Enum::name);
+        return forEnum(enumClass, Enum::name, false);
+    }
+
+    static <E extends Enum<E>> Endec<E> forEnum(Class<E> enumClass, boolean caseSensitive) {
+        return forEnum(enumClass, Enum::name, caseSensitive);
     }
 
     /**
@@ -218,16 +222,26 @@ public interface Endec<T> {
      * In a human-readable format, the endec serializes to the {@linkplain Enum#name() constant's name},
      * and to its {@linkplain Enum#ordinal() ordinal} otherwise
      */
-    static <E extends Enum<E>> Endec<E> forEnum(Class<E> enumClass, Function<E, String> nameLookup) {
+    static <E extends Enum<E>> Endec<E> forEnum(Class<E> enumClass, Function<E, String> nameLookup, boolean caseSensitive) {
         var enumValues = enumClass.getEnumConstants();
         var serializedNames = new HashMap<String, E>();
 
-        for (E enumValue : enumValues) serializedNames.put(nameLookup.apply(enumValue), enumValue);
+        for (E enumValue : enumValues) {
+            var name = nameLookup.apply(enumValue);
+
+            if (caseSensitive) name = name.toLowerCase(Locale.ROOT);
+
+            var currentEntry = serializedNames.putIfAbsent(name, enumValue);
+
+            if (currentEntry != null) {
+                throw new IllegalStateException("Unable to handle given enum [" + enumClass.getSimpleName() + "] as an entry has the same name when lower cased: " + name);
+            }
+        }
 
         return ifAttr(
                 SerializationAttributes.HUMAN_READABLE,
                 STRING.xmap(name -> {
-                    var entry = serializedNames.get(name);
+                    var entry = serializedNames.get(caseSensitive ? name : name.toLowerCase(Locale.ROOT));
 
                     if (entry == null) throw new IllegalStateException(enumClass.getCanonicalName() + " constant with the name of [" + name + "] could not be located!");
 
@@ -460,6 +474,16 @@ public interface Endec<T> {
         return this.listOf().xmap(HashSet::new, ArrayList::new);
     }
 
+    default <C extends Collection<T>> Endec<C> collectionOf(Supplier<C> supplier) {
+        return this.listOf().xmap(ts -> {
+            var collection = supplier.get();
+
+            collection.addAll(ts);
+
+            return collection;
+        }, ArrayList::new);
+    }
+
     /**
      * Create a new endec by wrapping {@link #optionalOf()} and mapping between
      * present optional &lt;-&gt; value and empty optional &lt;-&gt; null
@@ -508,7 +532,12 @@ public interface Endec<T> {
         return new StructField<>(name, this, getter);
     }
 
+    @Deprecated
     default <S> StructField<S, @Nullable T> optionalFieldOf(String name, Function<S, @Nullable T> getter) {
+        return nullableFieldOf(name, getter);
+    }
+
+    default <S> StructField<S, @Nullable T> nullableFieldOf(String name, Function<S, @Nullable T> getter) {
         return optionalFieldOf(name, getter, (T) null);
     }
 
