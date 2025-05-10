@@ -1,7 +1,7 @@
 package io.wispforest.endec.impl;
 
-import io.wispforest.endec.SerializationAttributes;
 import io.wispforest.endec.Endec;
+import io.wispforest.endec.SerializationAttributes;
 
 import java.time.Instant;
 import java.util.*;

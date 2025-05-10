@@ -3,7 +3,6 @@ package io.wispforest.endec.format.gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonStreamParser;
 import io.wispforest.endec.*;
-import io.wispforest.endec.SerializationContext;
 
 public final class GsonEndec implements Endec<JsonElement> {
 

@@ -2,7 +2,6 @@ package io.wispforest.endec.format.edm;
 
 import com.google.common.io.ByteStreams;
 import io.wispforest.endec.*;
-import io.wispforest.endec.SerializationContext;
 
 import java.io.IOException;
 

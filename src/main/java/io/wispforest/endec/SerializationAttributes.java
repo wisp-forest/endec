@@ -9,4 +9,5 @@ public class SerializationAttributes {
      * {@link net.minecraft.util.math.BlockPos} as an integer sequence instead of packing it into a long
      */
     public static final SerializationAttribute.Marker HUMAN_READABLE = SerializationAttribute.marker("human_readable");
+    public static final SerializationAttribute.Marker DISABLE_COMMENTS = SerializationAttribute.marker("disable_comments");
 }

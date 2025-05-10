@@ -1,7 +1,8 @@
 package io.wispforest.endec;
 
 import io.wispforest.endec.impl.*;
-import io.wispforest.endec.util.*;
+import io.wispforest.endec.util.MapCarrier;
+import io.wispforest.endec.util.RangeNumberException;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;

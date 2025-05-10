@@ -4,7 +4,6 @@ import blue.endless.jankson.Jankson;
 import blue.endless.jankson.JsonElement;
 import blue.endless.jankson.api.SyntaxError;
 import io.wispforest.endec.*;
-import io.wispforest.endec.SerializationContext;
 
 public final class JanksonEndec implements Endec<JsonElement> {
 

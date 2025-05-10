@@ -5,10 +5,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/**
- * @deprecated Please use {@link IsNullable} instead!
- */
-@Target(ElementType.RECORD_COMPONENT)
+@Target(ElementType.TYPE_USE)
 @Retention(RetentionPolicy.RUNTIME)
-@Deprecated
-public @interface NullableComponent {}
+public @interface RangedInteger {
+    long min() default -Long.MAX_VALUE;
+    long max() default Long.MAX_VALUE;
+    boolean throwError() default false;
+}

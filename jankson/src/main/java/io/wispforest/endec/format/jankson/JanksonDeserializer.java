@@ -2,8 +2,6 @@ package io.wispforest.endec.format.jankson;
 
 import blue.endless.jankson.*;
 import io.wispforest.endec.*;
-import io.wispforest.endec.SerializationAttributes;
-import io.wispforest.endec.SerializationContext;
 import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
