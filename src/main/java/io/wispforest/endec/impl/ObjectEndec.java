@@ -72,7 +72,8 @@ public final class ObjectEndec<T> implements StructEndec<T> {
                         field.getName(),
                         (Endec<Object>) builder.getAnnotated(field, entry.getValue()),
                         ReflectionUtils.createGetter(clazz, field, alternativeGenericTypeCheck),
-                        ReflectionUtils.createSetter(clazz, field, alternativeGenericTypeCheck)
+                        ReflectionUtils.createSetter(clazz, field, alternativeGenericTypeCheck),
+                        builder.getContext(field)
                 ));
             }
 

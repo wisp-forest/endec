@@ -67,6 +67,12 @@ public final class SerializationContext {
     }
 
     public SerializationContext and(SerializationContext other) {
+        if (this.isEmpty()) {
+            return other.isEmpty() ? EMPTY : other;
+        }  else if(other.isEmpty()) {
+            return this;
+        }
+
         var newAttributeValues = new HashMap<>(this.attributeValues);
         newAttributeValues.putAll(other.attributeValues);
 
@@ -91,6 +97,10 @@ public final class SerializationContext {
         }
 
         return this.getAttributeValue(attribute);
+    }
+
+    public boolean isEmpty() {
+        return this.attributeValues.isEmpty() && this.suppressedAttributes.isEmpty();
     }
 
     private static Map<SerializationAttribute, Object> unpackAttributes(SerializationAttribute.Instance[] attributes) {

@@ -2,11 +2,14 @@ package io.wispforest.endec.impl;
 
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.SerializationAttributes;
+import io.wispforest.endec.SerializationContext;
 import io.wispforest.endec.annotations.*;
 import io.wispforest.endec.util.reflection.*;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
+import org.checkerframework.checker.units.qual.A;
+import org.checkerframework.checker.units.qual.N;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
@@ -21,6 +24,7 @@ public class ReflectiveEndecBuilder {
 
     private final Map<Class<?>, Endec<?>> classToEndec = new LinkedHashMap<>();
 
+    private final Map<Class<? extends Annotation>, AnnotatedContextGatherer<? extends Annotation>> classToContextGatherer = new LinkedHashMap<>();
     private final Map<Class<? extends Annotation>, AnnotatedAdjuster<? extends Annotation>> classToTypeAdjuster = new LinkedHashMap<>();
     private final Map<Class<?>, MethodTypeCheckBypass> classToAlternativeChecker = new LinkedHashMap<>();
 
@@ -63,6 +67,15 @@ public class ReflectiveEndecBuilder {
         return this;
     }
 
+    public <A extends Annotation> ReflectiveEndecBuilder registerContextGatherer(Class<A> clazz, AnnotatedContextGatherer<A> adjuster) {
+        if (this.classToContextGatherer.containsKey(clazz)) {
+            throw new IllegalStateException("Class '" + clazz.getName() + "' already has an associated AnnotatedContextGatherer");
+        }
+
+        this.classToContextGatherer.put(clazz, adjuster);
+        return this;
+    }
+
     public ReflectiveEndecBuilder registerMethodTypeCheckBypass(Class<?> clazz, String ...methodNames) {
         var validMethodsToBypass = Set.of(methodNames);
 
@@ -78,6 +91,31 @@ public class ReflectiveEndecBuilder {
         return this;
     }
 
+    //--
+
+    public SerializationContext getContext(AnnotatedElement annotatedElement) {
+        return getContext(annotatedElement);
+    }
+
+    private SerializationContext getContext(AnnotatedType annotatedType) {
+        SerializationContext context = SerializationContext.empty();
+
+        for (var clazz : this.classToTypeAdjuster.keySet()) {
+            context = context.and(getContextFromType(clazz, annotatedType));
+        }
+
+        return context;
+    }
+
+    private <A extends Annotation> SerializationContext getContextFromType(Class<A> annotationClazz, AnnotatedType annotatedType) {
+        if(!annotatedType.isAnnotationPresent(annotationClazz)) return SerializationContext.empty();
+
+        return ((AnnotatedContextGatherer<A>) this.classToContextGatherer.get(annotationClazz))
+                .getContext(annotatedType, annotatedType.getAnnotation(annotationClazz));
+    }
+
+    //--
+
     public MethodTypeCheckBypass getAlternativeGenericTypeCheck(Class<?> clazz) {
         var alternativeCheck = this.classToAlternativeChecker.get(clazz);
 
@@ -91,6 +129,8 @@ public class ReflectiveEndecBuilder {
 
         return MethodTypeCheckBypass.FALSE;
     }
+
+    //--
 
     public Endec<?> getAnnotated(AnnotatedElement annotatedElement) {
         return getAnnotated(annotatedElement, ReflectionUtils.getBaseType(annotatedElement));
@@ -174,6 +214,8 @@ public class ReflectiveEndecBuilder {
         return ((AnnotatedAdjuster<A>) this.classToTypeAdjuster.get(annotationClazz))
                 .adjustEndec(annotatedType, annotatedType.getAnnotation(annotationClazz), endec);
     }
+
+    //--
 
     /**
      * Get (or potentially create) the endec associated with {@code type}. In addition
@@ -471,6 +513,13 @@ public class ReflectiveEndecBuilder {
             }
         });
 
+        builder.registerTypeAdjuster(IsNullable.class, new AnnotatedAdjuster<>() {
+            @Override
+            public <T> AdjustmentResult<T> adjustEndec(AnnotatedType annotatedType, IsNullable annotation, Endec<T> base) {
+                return AdjustmentResult.of(base.nullableOf());
+            }
+        });
+
         builder.registerTypeAdjuster(IsVarInt.class, new AnnotatedAdjuster<>() {
             @Override
             public <T> AdjustmentResult<T> adjustEndec(AnnotatedType annotatedType, IsVarInt annotation, Endec<T> base) {
@@ -514,6 +563,10 @@ public class ReflectiveEndecBuilder {
 
                 return AdjustmentResult.empty();
             }
+        });
+
+        builder.registerContextGatherer(Comment.class, (annotatedType, annotation) -> {
+            return SerializationContext.attributes(new CommentAttribute(annotation.comment()));
         });
     }
 

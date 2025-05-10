@@ -18,13 +18,20 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
     protected final Endec<F> endec;
     protected final Function<S, F> getter;
     protected final @Nullable Supplier<F> defaultValueFactory;
+    protected final SerializationContext context;
 
     @ApiStatus.Internal
-    public StructField(String name, Endec<F> endec, Function<S, F> getter, @Nullable Supplier<F> defaultValueFactory) {
+    public StructField(String name, Endec<F> endec, Function<S, F> getter, @Nullable Supplier<F> defaultValueFactory, SerializationContext context) {
         this.name = name;
         this.endec = endec;
         this.getter = getter;
         this.defaultValueFactory = defaultValueFactory;
+        this.context = context;
+    }
+
+    @ApiStatus.Internal
+    public StructField(String name, Endec<F> endec, Function<S, F> getter, @Nullable Supplier<F> defaultValueFactory) {
+        this(name, endec, getter, defaultValueFactory, SerializationContext.empty());
     }
 
     @ApiStatus.Internal
@@ -37,9 +44,13 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
         this(name, endec, getter, (Supplier<F>) null);
     }
 
+    public StructField<S, F> withContext(SerializationContext context) {
+        return new StructField<>(this.name, this.endec, this.getter, this.defaultValueFactory, context);
+    }
+
     public void encodeField(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, S instance) {
         try {
-            struct.field(this.name, ctx, this.endec, this.getter.apply(instance), this.defaultValueFactory != null);
+            struct.field(this.name, ctx.and(this.context), this.endec, this.getter.apply(instance), this.defaultValueFactory != null);
         } catch (Exception e) {
             throw new StructFieldException("Exception occurred when encoding a given StructField: [Field: " + this.name + "]", e);
         }
@@ -47,7 +58,7 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
 
     public F decodeField(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct) {
         try {
-            return struct.field(this.name, ctx, this.endec, this.defaultValueFactory);
+            return struct.field(this.name, ctx.and(this.context), this.endec, this.defaultValueFactory);
         } catch (Exception e) {
             throw new StructFieldException("Exception occurred when decoding a given StructField: [Field: " + this.name + "]", e);
         }
@@ -56,8 +67,12 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
     public static final class Flat<S, F> extends StructField<S, F> {
 
         @ApiStatus.Internal
+        public Flat(StructEndec<F> endec, Function<S, F> getter, SerializationContext context) {
+            super("", endec, getter, (Supplier<F>) null, context);
+        }
+
         public Flat(StructEndec<F> endec, Function<S, F> getter) {
-            super("", endec, getter, (Supplier<F>) null);
+            this(endec, getter, SerializationContext.empty());
         }
 
         private StructEndec<F> endec() {
@@ -66,12 +81,12 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
 
         @Override
         public void encodeField(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, S instance) {
-            this.endec().encodeStruct(ctx, serializer, struct, this.getter.apply(instance));
+            this.endec().encodeStruct(ctx.and(this.context), serializer, struct, this.getter.apply(instance));
         }
 
         @Override
         public F decodeField(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct) {
-            return this.endec().decodeStruct(ctx, deserializer, struct);
+            return this.endec().decodeStruct(ctx.and(this.context), deserializer, struct);
         }
     }
 
@@ -85,15 +100,19 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
 
         private final BiConsumer<S, F> setter;
 
-        public MutableField(String name, Endec<F> endec, Function<S, F> getter, BiConsumer<S, F> setter) {
-            super(name, endec, getter, (Supplier<F>) null);
+        public MutableField(String name, Endec<F> endec, Function<S, F> getter, BiConsumer<S, F> setter, SerializationContext context) {
+            super(name, endec, getter, (Supplier<F>) null, context);
 
             this.setter = setter;
         }
 
+        public MutableField(String name, Endec<F> endec, Function<S, F> getter, BiConsumer<S, F> setter) {
+            this(name, endec, getter, setter, SerializationContext.empty());
+        }
+
         public void decodeField(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct, S s) {
             try {
-                F f = struct.field(this.name, ctx, this.endec, this.defaultValueFactory);
+                F f = struct.field(this.name, ctx.and(this.context), this.endec, this.defaultValueFactory);
 
                 setter.accept(s, f);
             } catch (Exception e) {
