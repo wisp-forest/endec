@@ -41,7 +41,7 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
     }
 
     public StructField<S, F> withContext(SerializationContext context) {
-        return new StructField<>(this.name, this.endec, this.getter, this.defaultValueFactory, context);
+        return new StructField<>(this.name, this.endec, this.getter, this.defaultValueFactory, this.context.and(context));
     }
 
     public void encodeField(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, S instance) {
@@ -76,6 +76,11 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
         }
 
         @Override
+        public Flat<S, F> withContext(SerializationContext context) {
+            return new Flat<S, F>((StructEndec<F>) this.endec, this.getter, this.context.and(context));
+        }
+
+        @Override
         public void encodeField(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, S instance) {
             this.endec().encodeStruct(ctx.and(this.context), serializer, struct, this.getter.apply(instance));
         }
@@ -104,6 +109,11 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
 
         public MutableField(String name, Endec<F> endec, Function<S, F> getter, BiConsumer<S, F> setter) {
             this(name, endec, getter, setter, SerializationContext.empty());
+        }
+
+        @Override
+        public MutableField<S, F> withContext(SerializationContext context) {
+            return new MutableField<S, F>(this.name, this.endec, this.getter, this.setter, this.context.and(context));
         }
 
         public void decodeField(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct, S s) {
