@@ -9,6 +9,9 @@ import io.wispforest.endec.util.reflection.ObjectConstructor;
 import java.lang.reflect.Constructor;
 import java.util.List;
 
+/// 
+/// A base for both [RecordEndec]s and any object found to be closer to a Record with [ObjectEndec#create] method 
+/// 
 public class RecordishEndec<T> implements StructEndec<T> {
 
     protected final List<StructField<T, ?>> fields;

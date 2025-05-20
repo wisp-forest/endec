@@ -3,6 +3,7 @@ package io.wispforest.endec.impl;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.SerializationAttributes;
 import io.wispforest.endec.SerializationContext;
+import io.wispforest.endec.StructEndec;
 import io.wispforest.endec.annotations.*;
 import io.wispforest.endec.util.reflection.*;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -56,6 +57,10 @@ public class ReflectiveEndecBuilder {
         return this;
     }
 
+    ///
+    /// Registers a custom [AnnotatedAdjuster] for the given [Annotation] `clazz` passed. Allows the ability
+    /// to adjust the returned [Endec] from an annotated Field in [RecordEndec] or [ObjectEndec]
+    ///
     public <A extends Annotation> ReflectiveEndecBuilder registerTypeAdjuster(Class<A> clazz, AnnotatedAdjuster<A> adjuster) {
         if (this.classToTypeAdjuster.containsKey(clazz)) {
             throw new IllegalStateException("Class '" + clazz.getName() + "' already has an associated AnnotatedAdjuster");
@@ -65,6 +70,10 @@ public class ReflectiveEndecBuilder {
         return this;
     }
 
+    ///
+    /// Registers a custom [AnnotatedAdjuster] for the given [Annotation] `clazz` passed. Allows the ability
+    /// to adjust the created [SerializationContext] from an annotated Field in [RecordEndec] or [ObjectEndec]
+    ///
     public <A extends Annotation> ReflectiveEndecBuilder registerContextGatherer(Class<A> clazz, AnnotatedContextGatherer<A> adjuster) {
         if (this.classToContextGatherer.containsKey(clazz)) {
             throw new IllegalStateException("Class '" + clazz.getName() + "' already has an associated AnnotatedContextGatherer");
@@ -80,6 +89,10 @@ public class ReflectiveEndecBuilder {
         return registerMethodTypeCheckBypass(clazz, method -> validMethodsToBypass.contains(method.getName()));
     }
 
+    ///
+    /// Registers a [MethodTypeCheckBypass] for a given `clazz` passed which allows for the ability to bypass a
+    /// given [Method]('s) return type check due to generic issues.
+    ///
     public ReflectiveEndecBuilder registerMethodTypeCheckBypass(Class<?> clazz, MethodTypeCheckBypass restorer) {
         if (this.classToAlternativeChecker.containsKey(clazz)) {
             throw new IllegalStateException("Class '" + clazz.getName() + "' already has an associated GenericRestorer");
@@ -149,6 +162,11 @@ public class ReflectiveEndecBuilder {
         return getAnnotated(annotatedType, null);
     }
 
+    /// Get (or potentially create) the endec associated with `annotatedType`. In addition to [#get(Class)], this
+    /// method uses type parameter information to automatically create endecs for maps, lists, sets and optionals.
+    ///
+    /// Similar to [#get(java.lang.reflect.Type) by allows for the gotten [Endec] to be passed to [#adjustEndecWithType]
+    /// to adjust the endec based on any [Annotation]('s) present on the given type.
     public Endec<?> getAnnotated(AnnotatedType annotatedType, @Nullable Type baseType) {
         var type = baseType == null ? annotatedType.getType() : baseType;
 
@@ -325,6 +343,9 @@ public class ReflectiveEndecBuilder {
         return (Endec<T>) this.classToEndec.get(clazz);
     }
 
+    ///
+    /// Attempts to get the given field or method getter that will return the Endec to encode the given clazz
+    ///
     private Endec<?> getDefinedEndec(Class<?> clazz) {
         var possibleEndecGetterFields = Arrays.stream(clazz.getDeclaredFields())
                 .filter(field -> field.isAnnotationPresent(DefinedEndecGetter.class))

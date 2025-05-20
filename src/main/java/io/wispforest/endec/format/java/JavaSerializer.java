@@ -9,6 +9,18 @@ import io.wispforest.endec.util.RecursiveSerializer;
 
 import java.util.*;
 
+///
+/// A Serializer that encodes a given object into Java's fundamental Native types listed below:
+/// - Numbers: [Byte], [Short], [Integer], [Long], [Float], [Double]
+/// - [Boolean]
+/// - [String]
+/// - [Byte]\[\]
+/// - [Optional]
+/// - [java.util.Map]
+/// - [List]
+///
+/// Also has support for adding comments to Object's fields on encode within [JavaSerializer.Struct#field(String, SerializationContext, Endec, Object, boolean)]
+///
 public class JavaSerializer extends RecursiveSerializer<Object> implements SelfDescribedSerializer<Object> {
 
     private final java.util.Map<Object, java.util.Map<String, String>> commentLookupMap = new HashMap<>();

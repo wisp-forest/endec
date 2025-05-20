@@ -7,6 +7,10 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;
 
+///
+/// Attribute for holding a comment when encoding a field and the desired comment is meant to be handled by the format
+/// if possible to write before the data in the given file
+///
 public record CommentAttribute(String comment) implements SerializationAttribute.Instance {
     public static final SerializationAttribute.WithValue<CommentAttribute> ATTRIBUTE = SerializationAttribute.withValue("endec_comment");
 

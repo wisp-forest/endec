@@ -8,6 +8,13 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+///
+/// A Holder object that is used to [#encodeField] and [#decodeField] a field ([F]) for object ([S])
+/// using the passed [Endec] combined with the [#name] and field [#getter].
+///
+/// By passing in a **NON NULL** [Supplier<F>] for the fields [#defaultValueFactory], allowing to omit
+/// reading field data when the format supports such.
+///
 public sealed class StructField<S, F> permits StructField.Flat, StructField.MutableField {
 
     protected final String name;
@@ -40,6 +47,9 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
         this(name, endec, getter, (Supplier<F>) null);
     }
 
+    ///
+    /// Allows for the given [StructField] to be copied with additional [SerializationContext]
+    ///
     public StructField<S, F> withContext(SerializationContext context) {
         return new StructField<>(this.name, this.endec, this.getter, this.defaultValueFactory, this.context.and(context));
     }
@@ -52,6 +62,7 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
         }
     }
 
+
     public F decodeField(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct) {
         try {
             return struct.field(this.name, ctx.and(this.context), this.endec, this.defaultValueFactory);
@@ -60,6 +71,13 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
         }
     }
 
+    ///
+    /// A variant of [StructField] that will flatten the Fields data using a passed [StructEndec]
+    /// instead of encoding it as field.
+    ///
+    /// Such means the [F] object will have its fields be merged into [S] objects Fields in the
+    /// given Data Format encoded with.
+    ///
     public static final class Flat<S, F> extends StructField<S, F> {
 
         @ApiStatus.Internal
@@ -91,12 +109,20 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
         }
     }
 
+    ///
+    /// An exception thrown when an [Throwable] has occured when [#encodeField] or [#decodeField] a given field
+    ///
     public static class StructFieldException extends IllegalStateException {
         public StructFieldException(String message, Throwable cause) {
             super(message, cause);
         }
     }
 
+    ///
+    /// A variant of [StructField] that allows for the mutation of a given Field using the passed [#setter].
+    ///
+    /// An example of such is within the [ObjectEndec] using [#decodeField(SerializationContext, Deserializer, Deserializer.Struct, S)]
+    ///
     public static final class MutableField<S, F> extends StructField<S, F> {
 
         private final BiConsumer<S, F> setter;

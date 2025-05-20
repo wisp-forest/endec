@@ -11,6 +11,16 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+///
+/// A Deserializer that decodes Java's fundamental Native types listed below:
+/// - Numbers: [Byte], [Short], [Integer], [Long], [Float], [Double]
+/// - [Boolean]
+/// - [String]
+/// - [Byte]\[\]
+/// - [Optional]
+/// - [java.util.Map]
+/// - [List]
+///
 public class JavaDeserializer extends RecursiveDeserializer<Object> implements SelfDescribedDeserializer<Object> {
 
     protected JavaDeserializer(Object serialized) {
