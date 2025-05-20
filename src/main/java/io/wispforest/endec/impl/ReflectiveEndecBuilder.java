@@ -92,13 +92,13 @@ public class ReflectiveEndecBuilder {
     //--
 
     public SerializationContext getContext(AnnotatedElement annotatedElement) {
-        return getContext(annotatedElement);
+        return getContext(ReflectionUtils.getAnnotatedType(annotatedElement));
     }
 
     private SerializationContext getContext(AnnotatedType annotatedType) {
         SerializationContext context = SerializationContext.empty();
 
-        for (var clazz : this.classToTypeAdjuster.keySet()) {
+        for (var clazz : this.classToContextGatherer.keySet()) {
             context = context.and(getContextFromType(clazz, annotatedType));
         }
 
@@ -114,7 +114,7 @@ public class ReflectiveEndecBuilder {
 
     //--
 
-    public MethodTypeCheckBypass getAlternativeGenericTypeCheck(Class<?> clazz) {
+    MethodTypeCheckBypass getAlternativeGenericTypeCheck(Class<?> clazz) {
         var alternativeCheck = this.classToAlternativeChecker.get(clazz);
 
         if (alternativeCheck != null) return alternativeCheck;
@@ -135,7 +135,7 @@ public class ReflectiveEndecBuilder {
     }
 
     public Endec<?> getAnnotated(AnnotatedElement annotatedElement, @Nullable Type baseType) {
-        var endec = getAnnotated(ReflectionUtils.getAnnotatedType(annotatedElement), baseType);;
+        var endec = getAnnotated(ReflectionUtils.getAnnotatedType(annotatedElement), baseType);
 
         // TODO: ATTEMPT TO KEEP BINARY COMPAT WITH OLDER ENDEC VERSIONS
         if (annotatedElement instanceof RecordComponent component && component.isAnnotationPresent(NullableComponent.class)) {
@@ -326,17 +326,30 @@ public class ReflectiveEndecBuilder {
     }
 
     private Endec<?> getDefinedEndec(Class<?> clazz) {
-        var possibleEndecGetter = Arrays.stream(clazz.getDeclaredFields())
-                .filter(field -> Modifier.isStatic(field.getModifiers()) && Modifier.isPublic(field.getModifiers()))
+        var possibleEndecGetterFields = Arrays.stream(clazz.getDeclaredFields())
                 .filter(field -> field.isAnnotationPresent(DefinedEndecGetter.class))
                 .toList();
 
-        if (!possibleEndecGetter.isEmpty()) {
-            if (possibleEndecGetter.size() > 1) throw new IllegalStateException("Multiple Defined Endec fields within the given class: " + clazz);
+        var possibleEndecGetterMethods = Arrays.stream(clazz.getDeclaredMethods())
+                .filter(method -> Modifier.isStatic(method.getModifiers()) && Modifier.isPublic(method.getModifiers()))
+                .filter(method -> method.isAnnotationPresent(DefinedEndecGetter.class))
+                .toList();
 
-            var field = possibleEndecGetter.get(0);
+        if (possibleEndecGetterFields.size() > 1) throw new IllegalStateException("Multiple DefinedEndecGetter fields within the given class: " + clazz);
+        if (possibleEndecGetterMethods.size() > 1) throw new IllegalStateException("Multiple DefinedEndecGetter methods within the given class: " + clazz);
 
-            if (!ReflectionUtils.isTypeCompatible(ReflectionUtils.createParameterizedType(Endec.class, clazz), field.getGenericType())) {
+        if (!possibleEndecGetterFields.isEmpty()) {
+            var field = possibleEndecGetterFields.get(0);
+            var modifiers = field.getModifiers();
+
+            if (!Modifier.isStatic(modifiers) && !Modifier.isPublic(modifiers)) {
+                throw new IllegalStateException("A DefinedEndecGetter field was found not be PUBLIC and/or STATIC which is required!");
+            }
+
+            var isEndec = ReflectionUtils.isTypeCompatible(ReflectionUtils.createParameterizedType(Endec.class, clazz), field.getGenericType());
+            var isStructEndec = ReflectionUtils.isTypeCompatible(ReflectionUtils.createParameterizedType(StructEndec.class, clazz), field.getGenericType());
+
+            if (!isEndec && !isStructEndec) {
                 throw new IllegalStateException("Unable to use the given field [" + field + "] due to the type not matching the following class: " + clazz);
             }
 
@@ -345,35 +358,26 @@ public class ReflectiveEndecBuilder {
             } catch (Throwable e) {
                 throw new RuntimeException("A clazz [" + clazz + "] with a Defined Endec field was unable to be gotten due to an error!", e);
             }
-        } else if (clazz.isAnnotationPresent(DefinedEndecGetter.class)) {
-            // Places where the given endec method will be searched:
-            // - If the given annotation has a supplied method name
-            // - Or use `getEndec` or `endec`
+        } else if (!possibleEndecGetterMethods.isEmpty()) {
+            var method = possibleEndecGetterMethods.get(0);
+            var modifiers = method.getModifiers();
 
-            var customGetterName = clazz.getAnnotation(DefinedEndecGetter.class).endecGetterName();
-
-            List<String> methodNames = new ArrayList<>();
-
-            if (customGetterName.isBlank()) {
-                methodNames.add("endec");
-                methodNames.add("getEndec");
-            } else {
-                methodNames.add(customGetterName);
+            if (!Modifier.isStatic(modifiers) && !Modifier.isPublic(modifiers)) {
+                throw new IllegalStateException("A DefinedEndecGetter method was found not be PUBLIC and/or STATIC which is required!");
             }
 
-            for (var methodName : methodNames) {
-                var getter = ReflectionUtils.getZeroArgMethodWithCompatibleReturnType(methodName, clazz, ReflectionUtils.createParameterizedType(Endec.class, clazz), Modifier::isStatic);
+            var isEndec = ReflectionUtils.isTypeCompatible(ReflectionUtils.createParameterizedType(Endec.class, clazz), method.getGenericReturnType());
+            var isStructEndec = ReflectionUtils.isTypeCompatible(ReflectionUtils.createParameterizedType(StructEndec.class, clazz), method.getGenericReturnType());
 
-                if (getter == null) continue;
-
-                try {
-                    return (Endec<?>) getter.invoke(null);
-                } catch (Throwable e) {
-                    throw new RuntimeException("A clazz [" + clazz + "] with a DefinedEndec was unable to be gotten due to an error!", e);
-                }
+            if (!isEndec && !isStructEndec) {
+                throw new IllegalStateException("Unable to use the given field [" + method + "] due to the type not matching the following class: " + clazz);
             }
 
-            throw new IllegalStateException("Unable to find any method on the given class [" + clazz + "] with the given names: " + methodNames.toString());
+            try {
+                return (Endec<?>) method.invoke(null);
+            } catch (Throwable e) {
+                throw new RuntimeException("A clazz [" + clazz + "] with a Defined Endec field was unable to be gotten due to an error!", e);
+            }
         }
 
         return null;
@@ -507,14 +511,7 @@ public class ReflectiveEndecBuilder {
         builder.registerTypeAdjuster(IsNullable.class, new AnnotatedAdjuster<>() {
             @Override
             public <T> AdjustmentResult<T> adjustEndec(AnnotatedType annotatedType, IsNullable annotation, Endec<T> base) {
-                return AdjustmentResult.of(base.nullableOf());
-            }
-        });
-
-        builder.registerTypeAdjuster(IsNullable.class, new AnnotatedAdjuster<>() {
-            @Override
-            public <T> AdjustmentResult<T> adjustEndec(AnnotatedType annotatedType, IsNullable annotation, Endec<T> base) {
-                return AdjustmentResult.of(base.nullableOf());
+                return AdjustmentResult.of(new OptionalEndec<>(base.optionalOf(), () -> null, annotation.mayOmitField()));
             }
         });
 

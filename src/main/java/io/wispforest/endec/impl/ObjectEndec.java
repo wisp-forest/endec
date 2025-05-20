@@ -85,7 +85,7 @@ public final class ObjectEndec<T> implements StructEndec<T> {
                     var constructorTypes = List.of(constructor.getParameterTypes());
                     var fieldTypes = validFields.keySet().stream().map(Field::getType).toList();
 
-                    if (constructorTypes.equals(fieldTypes) /*&& constructor.getAnnotation(SerializationConstructor.class) != null*/) {
+                    if (constructorTypes.equals(fieldTypes)) {
                         validConstructor = (Constructor<T>) constructor;
                     }
                 } else if (constructor.getParameterCount() == 0) {
@@ -107,7 +107,9 @@ public final class ObjectEndec<T> implements StructEndec<T> {
                 structFields.add(new StructField<>(
                         field.getName(),
                         (Endec<Object>) builder.getAnnotated(field, entry.getValue()),
-                        ReflectionUtils.createGetter(clazz, field, builder.getAlternativeGenericTypeCheck(clazz))
+                        ReflectionUtils.createGetter(clazz, field, builder.getAlternativeGenericTypeCheck(clazz)),
+                        null,
+                        builder.getContext(field)
                 ));
             }
 

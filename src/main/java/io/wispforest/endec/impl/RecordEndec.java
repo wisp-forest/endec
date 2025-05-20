@@ -47,7 +47,15 @@ public final class RecordEndec<R extends Record> extends RecordishEndec<R> {
 
                 var type = (component.getGenericType() instanceof TypeVariable<?>) ? extraTypeInfoStack.poll() : null;
 
-                fields.add(new StructField<>(component.getName(), (Endec<Object>) builder.getAnnotated(component, type), instance -> getRecordEntry(instance, handle), builder.getContext(component)));
+                fields.add(
+                        new StructField<>(
+                                component.getName(),
+                                (Endec<Object>) builder.getAnnotated(component, type),
+                                instance -> getRecordEntry(instance, handle),
+                                null,
+                                builder.getContext(component)
+                        )
+                );
 
                 canonicalConstructorArgs[i] = component.getType();
             } catch (IllegalAccessException e) {

@@ -8,6 +8,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+
+/// Mainly internal use collection of utility methods pertaining to reflection
 public class ReflectionUtils {
 
     public static Type getBaseType(AnnotatedElement annotatedElement) {
@@ -277,16 +279,14 @@ public class ReflectionUtils {
     }
 
     public static <T> Function<T, Object> createGetter(Class<T> clazz, Field field, MethodTypeCheckBypass alternativeTypeCheck) {
-//        if (Modifier.isPrivate(field.getModifiers())) {
-//            var method = findGetterMethod(clazz, field, alternativeTypeCheck);
-//
-//            return (t) -> {
-//                try { return method.invoke(t); }
-//                catch (Throwable e) { throw new IllegalStateException("Unable to get field [" + field + "] value from method", e); }
-//            };
-//        }
+        if (!Modifier.isPublic(field.getModifiers()) && !field.trySetAccessible()) {
+            var method = findGetterMethod(clazz, field, alternativeTypeCheck);
 
-        if (!field.trySetAccessible()) throw new IllegalStateException("Unable to set field Accessible: " + field);
+            return (t) -> {
+                try { return method.invoke(t); }
+                catch (Throwable e) { throw new IllegalStateException("Unable to get field [" + field + "] value from method", e); }
+            };
+        }
 
         return (t) -> {
             try { return field.get(t); }

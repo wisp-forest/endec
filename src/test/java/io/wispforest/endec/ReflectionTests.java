@@ -22,7 +22,7 @@ public class ReflectionTests {
     private static final ReflectiveEndecBuilder BUILDER = new ReflectiveEndecBuilder();
 
     @Test
-    @DisplayName("test DefinedEndec Annotation")
+    @DisplayName("test Deprecated Nullable annoation")
     public void testDeprecatedNullable(){
         Endec<TestRecord> endec;
 
@@ -246,8 +246,8 @@ public class ReflectionTests {
     }
 
     @Test
-    @DisplayName("test DefinedEndec Annotation")
-    public void testDefinedEndecAnnotation(){
+    @DisplayName("test DefinedEndec Annotation on Method")
+    public void testDefinedEndecAnnotationOnMethod(){
         Endec<Funny> endec;
 
         try {
@@ -267,7 +267,28 @@ public class ReflectionTests {
         Assertions.assertEquals(obj, newObj);
     }
 
-    @DefinedEndecGetter
+    @Test
+    @DisplayName("test DefinedEndec Annotation on Field")
+    public void testDefinedEndecAnnotationOnField(){
+        Endec<Funny2> endec;
+
+        try {
+            endec = BUILDER.get(Funny2.class);
+        } catch (Throwable e) {
+            Assertions.fail(e);
+
+            return;
+        }
+
+        var obj = new Funny2();
+
+        var element = endec.encodeFully(SerializationContext.empty(), EdmSerializer::of, obj);
+
+        var newObj = endec.decodeFully(SerializationContext.empty(), EdmDeserializer::of, element);
+
+        Assertions.assertEquals(obj, newObj);
+    }
+
     public static class Funny {
 
         private String name;
@@ -284,6 +305,7 @@ public class ReflectionTests {
             this.isReallyFunny = isReallyFunny;
         }
 
+        @DefinedEndecGetter
         public static Endec<Funny> getEndec() {
             return StructEndecBuilder.of(
                     Endec.STRING.fieldOf("unknown", s -> s.name),
@@ -298,6 +320,44 @@ public class ReflectionTests {
             if (this == object) return true;
             if (object == null || getClass() != object.getClass()) return false;
             Funny funny = (Funny) object;
+            return numberOfFunny == funny.numberOfFunny && isReallyFunny == funny.isReallyFunny && Objects.equals(name, funny.name);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name, numberOfFunny, isReallyFunny);
+        }
+    }
+
+    public static class Funny2 {
+
+        @DefinedEndecGetter
+        public static final StructEndec<Funny2> ENDEC = StructEndecBuilder.of(
+                Endec.STRING.fieldOf("unknown", s -> s.name),
+                Endec.INT.fieldOf("numberOfFunny", s -> s.numberOfFunny),
+                Endec.BOOLEAN.fieldOf("isReallyFunny", s -> s.isReallyFunny),
+                Funny2::new
+        );
+
+        private String name;
+        private int numberOfFunny;
+        private boolean isReallyFunny;
+
+        public Funny2() {
+            this("unknown", -1, false);
+        }
+
+        public Funny2(String name, int numberOfFunny, boolean isReallyFunny) {
+            this.name = name;
+            this.numberOfFunny = numberOfFunny;
+            this.isReallyFunny = isReallyFunny;
+        }
+
+        @Override
+        public boolean equals(Object object) {
+            if (this == object) return true;
+            if (object == null || getClass() != object.getClass()) return false;
+            Funny2 funny = (Funny2) object;
             return numberOfFunny == funny.numberOfFunny && isReallyFunny == funny.isReallyFunny && Objects.equals(name, funny.name);
         }
 
