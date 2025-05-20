@@ -1,4 +1,4 @@
-## Endec
+## endec
 
 endec is a format-agnostic serialization framework inspired by Rust's [serde](https://serde.rs) library and the Codec API from Mojang's [DataFixerUpper](https://github.com/mojang/datafixerupper).
 

@@ -237,7 +237,7 @@ public interface Endec<T> {
 
     ///
     /// Create a new endec which serializes the enum constants of `enumClass` using the [constant's name][Enum#name()]
-    /// when in a human-readable format.
+    /// when in a human-readable format and to its [ordinal][Enum#ordinal()] otherwise. 
     ///
     static <E extends Enum<E>> Endec<E> forEnum(Class<E> enumClass, boolean caseSensitive) {
         return forEnum(enumClass, Enum::name, caseSensitive);
@@ -271,7 +271,7 @@ public interface Endec<T> {
         return ifAttr(
                 SerializationAttributes.HUMAN_READABLE,
                 STRING.xmap(name -> {
-                    var entry = serializedNames.get((caseSensitive) ? name : name.toLowerCase(Locale.ROOT) );
+                    var entry = serializedNames.get(caseSensitive ? name : name.toLowerCase(Locale.ROOT));
 
                     if (entry == null) throw new IllegalStateException(enumClass.getCanonicalName() + " constant with the name of [" + name + "] could not be located!");
 
@@ -513,6 +513,16 @@ public interface Endec<T> {
         return this.listOf().xmap(HashSet::new, ArrayList::new);
     }
 
+    default <C extends Collection<T>> Endec<C> collectionOf(Supplier<C> supplier) {
+        return this.listOf().xmap(ts -> {
+            var collection = supplier.get();
+
+            collection.addAll(ts);
+
+            return collection;
+        }, ArrayList::new);
+    }
+
     /**
      * Create a new endec by wrapping {@link #optionalOf()} and mapping between
      * present optional &lt;-&gt; value and empty optional &lt;-&gt; null
@@ -560,7 +570,12 @@ public interface Endec<T> {
         return new StructField<>(name, this, getter);
     }
 
+    @Deprecated
     default <S> StructField<S, @Nullable T> optionalFieldOf(String name, Function<S, @Nullable T> getter) {
+        return nullableFieldOf(name, getter);
+    }
+
+    default <S> StructField<S, @Nullable T> nullableFieldOf(String name, Function<S, @Nullable T> getter) {
         return optionalFieldOf(name, getter, (T) null);
     }
 
