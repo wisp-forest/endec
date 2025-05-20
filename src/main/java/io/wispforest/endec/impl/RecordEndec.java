@@ -1,43 +1,40 @@
 package io.wispforest.endec.impl;
 
-import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
-import io.wispforest.endec.Serializer;
-import io.wispforest.endec.StructEndec;
-import io.wispforest.endec.annotations.NullableComponent;
-import io.wispforest.endec.SerializationContext;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.util.*;
 
-public final class RecordEndec<R extends Record> implements StructEndec<R> {
+public final class RecordEndec<R extends Record> extends RecordishEndec<R> {
 
     private static final Map<Class<?>, RecordEndec<?>> ENDECS = new HashMap<>();
 
-    private final List<StructField<R, ?>> fields;
-    private final Constructor<R> instanceCreator;
-
     private RecordEndec(Constructor<R> instanceCreator, List<StructField<R, ?>> fields) {
-        this.instanceCreator = instanceCreator;
-        this.fields = fields;
+        super(instanceCreator, fields);
     }
 
     public static <R extends Record> RecordEndec<R> createShared(Class<R> recordClass){
         return create(ReflectiveEndecBuilder.SHARED_INSTANCE, recordClass);
     }
 
+    public static <R extends Record> RecordEndec<R> create(ReflectiveEndecBuilder builder, Class<R> recordClass) {
+        return create(builder, recordClass, new Type[0]);
+    }
+
     /**
      * Create (or get, if it already exists) the endec for the given record type
      */
     @SuppressWarnings("unchecked")
-    public static <R extends Record> RecordEndec<R> create(ReflectiveEndecBuilder builder, Class<R> recordClass) {
-        if (ENDECS.containsKey(recordClass)) return (RecordEndec<R>) ENDECS.get(recordClass);
+    public static <R extends Record> RecordEndec<R> create(ReflectiveEndecBuilder builder, Class<R> recordClass, Type ...typeArguments) {
+        var extraTypeInfoStack = new ArrayDeque<Type>(List.of(typeArguments));
+
+        var endec = builder.getExistingEndec(recordClass);
+
+        if (endec instanceof RecordEndec<R> recordEndec) return recordEndec;
 
         var fields = new ArrayList<StructField<R, ?>>();
         var canonicalConstructorArgs = new Class<?>[recordClass.getRecordComponents().length];
@@ -48,10 +45,17 @@ public final class RecordEndec<R extends Record> implements StructEndec<R> {
                 var component = recordClass.getRecordComponents()[i];
                 var handle = lookup.unreflect(component.getAccessor());
 
-                var endec = (Endec<Object>) builder.get(component.getGenericType());
-                if(component.isAnnotationPresent(NullableComponent.class)) endec = endec.nullableOf();
+                var type = (component.getGenericType() instanceof TypeVariable<?>) ? extraTypeInfoStack.poll() : null;
 
-                fields.add(new StructField<>(component.getName(), endec, instance -> getRecordEntry(instance, handle)));
+                fields.add(
+                        new StructField<>(
+                                component.getName(),
+                                (Endec<Object>) builder.getAnnotated(component, type),
+                                instance -> getRecordEntry(instance, handle),
+                                null,
+                                builder.getContext(component)
+                        )
+                );
 
                 canonicalConstructorArgs[i] = component.getType();
             } catch (IllegalAccessException e) {
@@ -60,10 +64,7 @@ public final class RecordEndec<R extends Record> implements StructEndec<R> {
         }
 
         try {
-            var endec = new RecordEndec<>(recordClass.getConstructor(canonicalConstructorArgs), fields);
-            ENDECS.put(recordClass, endec);
-
-            return endec;
+            return new RecordEndec<>(recordClass.getConstructor(canonicalConstructorArgs), fields);
         } catch (NoSuchMethodException e) {
             throw new IllegalStateException("Could not locate canonical record constructor");
         }
@@ -75,27 +76,5 @@ public final class RecordEndec<R extends Record> implements StructEndec<R> {
         } catch (Throwable e) {
             throw new IllegalStateException("Unable to get record component value", e);
         }
-    }
-
-    @Override
-    public R decodeStruct(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct) {
-        Object[] fieldValues = new Object[this.fields.size()];
-
-        int index = 0;
-
-        for (var field : this.fields) {
-            fieldValues[index++] = field.decodeField(ctx, deserializer, struct);
-        }
-
-        try {
-            return instanceCreator.newInstance(fieldValues);
-        } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
-            throw new IllegalStateException("Error while deserializing record", e);
-        }
-    }
-
-    @Override
-    public void encodeStruct(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, R instance) {
-        this.fields.forEach(field -> field.encodeField(ctx, serializer, struct, instance));
     }
 }

@@ -1,7 +1,9 @@
 package io.wispforest.endec;
 
 import io.wispforest.endec.impl.*;
-import io.wispforest.endec.util.*;
+import io.wispforest.endec.util.MapCarrier;
+import io.wispforest.endec.util.RangeNumberException;
+import org.checkerframework.checker.units.qual.min;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -155,6 +157,10 @@ public interface Endec<T> {
         };
     }
 
+    ///
+    /// Creates a [Endec] using the given `builderFunc` as a method to allow for self reference
+    /// with the [Endec] allowing for Recursive Data Structures
+    ///
     static <T> Endec<T> recursive(UnaryOperator<Endec<T>> builderFunc) {
         return new RecursiveEndec<>(builderFunc);
     }
@@ -165,6 +171,23 @@ public interface Endec<T> {
 
     static <T> StructEndec<T> unit(Supplier<T> instance) {
         return StructEndec.of((ctx, serializer, struct, value) -> {}, (ctx, deserializer, struct) -> instance.get());
+    }
+
+    ///
+    /// Creates a [StructEndec] from the given [Endec] using the `name` as the fields Key
+    ///
+    default StructEndec<T> structOf(String name) {
+        return StructEndec.of(
+                (ctx, serializer, struct, value) -> struct.field(name, ctx, Endec.this, value),
+                (ctx, serializer, struct) -> struct.field(name, ctx, Endec.this));
+    }
+
+    ///
+    /// Creates a [StructEndec] using the given `builderFunc` as a method to allow for self reference
+    /// with the [StructEndec] allowing for Recursive Data Structures
+    ///
+    static <T> StructEndec<T> recursiveStruct(UnaryOperator<StructEndec<T>> builderFunc) {
+        return new RecursiveStructEndec<>(builderFunc);
     }
 
     /**
@@ -209,33 +232,40 @@ public interface Endec<T> {
     }
 
     static <E extends Enum<E>> Endec<E> forEnum(Class<E> enumClass) {
-        return forEnum(enumClass, Enum::name, false);
+        return forEnum(enumClass, true);
     }
 
+    ///
+    /// Create a new endec which serializes the enum constants of `enumClass` using the [constant's name][Enum#name()]
+    /// when in a human-readable format and to its [ordinal][Enum#ordinal()] otherwise. 
+    ///
     static <E extends Enum<E>> Endec<E> forEnum(Class<E> enumClass, boolean caseSensitive) {
         return forEnum(enumClass, Enum::name, caseSensitive);
     }
 
-    /**
-     * Create a new endec which serializes the enum constants of {@code enumClass}
-     * <p>
-     * In a human-readable format, the endec serializes to the {@linkplain Enum#name() constant's name},
-     * and to its {@linkplain Enum#ordinal() ordinal} otherwise
-     */
+    ///
+    /// Create a new endec which serializes the enum constants of `enumClass`
+    ///
+    /// In a human-readable format, the endec serializes to the passed `nameLookup` [Function],
+    /// and to its [ordinal][Enum#ordinal()] otherwise. `caseSensitive` allows for the control
+    /// of if the name should be checked against a lower case version instead.
+    ///
     static <E extends Enum<E>> Endec<E> forEnum(Class<E> enumClass, Function<E, String> nameLookup, boolean caseSensitive) {
         var enumValues = enumClass.getEnumConstants();
         var serializedNames = new HashMap<String, E>();
 
         for (E enumValue : enumValues) {
-            var name = nameLookup.apply(enumValue);
+            var valueName = nameLookup.apply(enumValue);
 
-            if (caseSensitive) name = name.toLowerCase(Locale.ROOT);
+            if (!caseSensitive) {
+                valueName = valueName.toLowerCase(Locale.ROOT);
 
-            var currentEntry = serializedNames.putIfAbsent(name, enumValue);
-
-            if (currentEntry != null) {
-                throw new IllegalStateException("Unable to handle given enum [" + enumClass.getSimpleName() + "] as an entry has the same name when lower cased: " + name);
+                if (serializedNames.containsKey(valueName)) {
+                    throw new IllegalStateException("Unable to add Enum entry [" + valueName + "] as with caseInsensitive mode leads to duplicate named values!");
+                }
             }
+
+            serializedNames.put(valueName, enumValue);
         }
 
         return ifAttr(
@@ -372,6 +402,10 @@ public interface Endec<T> {
 
     // ---
 
+    ///
+    /// Creates Builder allowing for the adjustment of which [Endec] should be used when locating
+    /// [SerializationAttribute] on [#encode] [#decode
+    ///
     static <T> AttributeEndecBuilder<T> ifAttr(SerializationAttribute attribute, Endec<T> endec) {
         return new AttributeEndecBuilder<>(endec, attribute);
     }
@@ -435,6 +469,11 @@ public interface Endec<T> {
         return ranged(endec, min, max, false);
     }
 
+    ///
+    /// Creates a [Endec] with the given range using the `min` (inclusive) and `max` (inclusive) values passed as checks.
+    ///
+    /// Such will only throw an error if `throwError` is true otherwise the given min or max value will be returned instead.
+    ///
     static <N extends Number & Comparable<N>> Endec<N> ranged(Endec<N> endec, @Nullable N min, @Nullable N max, boolean throwError) {
         Function<N, N> errorChecker = n -> {
             // 1st check if the given min value exist and then compare similar to: [n < min]
@@ -489,7 +528,16 @@ public interface Endec<T> {
      * present optional &lt;-&gt; value and empty optional &lt;-&gt; null
      */
     default Endec<@Nullable T> nullableOf() {
-        return this.optionalOf().xmap(o -> o.orElse(null), Optional::ofNullable);
+        return optionalOf((T) null);
+    }
+
+    default Endec<T> optionalOf(T defaultValue) {
+        return optionalOf(() -> defaultValue);
+    }
+
+
+    default Endec<T> optionalOf(Supplier<T> defaultValue) {
+        return new OptionalEndec<T>(this.optionalOf(), defaultValue);
     }
 
     // --- Conversion ---
@@ -518,16 +566,6 @@ public interface Endec<T> {
 
     // ---
 
-    default StructEndec<T> structOf(String name) {
-        return StructEndec.of(
-                (ctx, serializer, struct, value) -> struct.field(name, ctx, Endec.this, value),
-                (ctx, serializer, struct) -> struct.field(name, ctx, Endec.this));
-    }
-
-    default StructEndec<T> recursiveStruct(UnaryOperator<StructEndec<T>> builderFunc) {
-        return new RecursiveStructEndec<>(builderFunc);
-    }
-
     default <S> StructField<S, T> fieldOf(String name, Function<S, T> getter) {
         return new StructField<>(name, this, getter);
     }
@@ -542,13 +580,13 @@ public interface Endec<T> {
     }
 
     default <S> StructField<S, T> optionalFieldOf(String name, Function<S, T> getter, @Nullable T defaultValue) {
-        return new StructField<>(name, this.optionalOf().xmap(optional -> optional.orElse(defaultValue), Optional::ofNullable), getter, defaultValue);
+        return new StructField<>(name, this.optionalOf(defaultValue), getter, defaultValue);
     }
 
     default <S> StructField<S, T> optionalFieldOf(String name, Function<S, T> getter, Supplier<@Nullable T> defaultValue) {
         Objects.requireNonNull(defaultValue, "Supplier was found to be null which is not permitted for optionalFieldOf");
 
-        return new StructField<>(name, this.optionalOf().xmap(optional -> optional.orElseGet(defaultValue), Optional::ofNullable), getter, defaultValue);
+        return new StructField<>(name, this.optionalOf(defaultValue), getter, defaultValue);
     }
 
     @FunctionalInterface

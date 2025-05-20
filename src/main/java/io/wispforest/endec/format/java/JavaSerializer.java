@@ -1,98 +1,116 @@
-package io.wispforest.endec.format.edm;
+package io.wispforest.endec.format.java;
 
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.SelfDescribedSerializer;
 import io.wispforest.endec.SerializationContext;
 import io.wispforest.endec.Serializer;
+import io.wispforest.endec.impl.CommentAttribute;
 import io.wispforest.endec.util.RecursiveSerializer;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
-public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements SelfDescribedSerializer<EdmElement<?>> {
+///
+/// A Serializer that encodes a given object into Java's fundamental Native types listed below:
+/// - Numbers: [Byte], [Short], [Integer], [Long], [Float], [Double]
+/// - [Boolean]
+/// - [String]
+/// - [Byte]\[\]
+/// - [Optional]
+/// - [java.util.Map]
+/// - [List]
+///
+/// Also has support for adding comments to Object's fields on encode within [JavaSerializer.Struct#field(String, SerializationContext, Endec, Object, boolean)]
+///
+public class JavaSerializer extends RecursiveSerializer<Object> implements SelfDescribedSerializer<Object> {
 
-    protected EdmSerializer() {
+    private final java.util.Map<Object, java.util.Map<String, String>> commentLookupMap = new HashMap<>();
+
+    protected JavaSerializer() {
         super(null);
     }
 
-    public static EdmSerializer of() {
-        return new EdmSerializer();
+    public static JavaSerializer of() {
+        return new JavaSerializer();
+    }
+
+    public java.util.Map<String, String> getComments(Object object) {
+        return commentLookupMap.containsKey(object)
+                ? java.util.Map.of()
+                : Collections.unmodifiableMap(commentLookupMap.get(object));
     }
 
     // ---
 
     @Override
     public void writeByte(SerializationContext ctx, byte value) {
-        this.consume(EdmElement.i8(value));
+        this.consume(value);
     }
 
     @Override
     public void writeShort(SerializationContext ctx, short value) {
-        this.consume(EdmElement.i16(value));
+        this.consume(value);
     }
 
     @Override
     public void writeInt(SerializationContext ctx, int value) {
-        this.consume(EdmElement.i32(value));
+        this.consume(value);
     }
 
     @Override
     public void writeLong(SerializationContext ctx, long value) {
-        this.consume(EdmElement.i64(value));
+        this.consume(value);
     }
 
     // ---
 
     @Override
     public void writeFloat(SerializationContext ctx, float value) {
-        this.consume(EdmElement.f32(value));
+        this.consume(value);
     }
 
     @Override
     public void writeDouble(SerializationContext ctx, double value) {
-        this.consume(EdmElement.f64(value));
+        this.consume(value);
     }
 
     // ---
 
     @Override
     public void writeVarInt(SerializationContext ctx, int value) {
-        this.consume(EdmElement.i32(value));
+        this.consume(value);
     }
 
     @Override
     public void writeVarLong(SerializationContext ctx, long value) {
-        this.consume(EdmElement.i64(value));
+        this.consume(value);
     }
 
     // ---
 
     @Override
     public void writeBoolean(SerializationContext ctx, boolean value) {
-        this.consume(EdmElement.bool(value));
+        this.consume(value);
     }
 
     @Override
     public void writeString(SerializationContext ctx, String value) {
-        this.consume(EdmElement.string(value));
+        this.consume(value);
     }
 
     @Override
     public void writeBytes(SerializationContext ctx, byte[] bytes) {
-        this.consume(EdmElement.bytes(bytes));
+        this.consume(bytes);
     }
 
     @Override
     public <V> void writeOptional(SerializationContext ctx, Endec<V> endec, Optional<V> optional) {
-        var result = new EdmElement<?>[1];
+        var result = new Object[1];
         this.frame(encoded -> {
             optional.ifPresent(v -> endec.encode(ctx, this, v));
             result[0] = encoded.value();
         });
 
-        this.consume(EdmElement.optional(Optional.ofNullable(result[0])));
+        this.consume(Optional.ofNullable(result[0]));
     }
 
     // ---
@@ -119,7 +137,7 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
         private final Endec<V> elementEndec;
         private final SerializationContext ctx;
 
-        private final List<EdmElement<?>> result;
+        private final List<Object> result;
 
         private Sequence(Endec<V> elementEndec, SerializationContext ctx) {
             this.elementEndec = elementEndec;
@@ -129,15 +147,15 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
 
         @Override
         public void element(V element) {
-            EdmSerializer.this.frame(encoded -> {
-                this.elementEndec.encode(ctx, EdmSerializer.this, element);
+            JavaSerializer.this.frame(encoded -> {
+                this.elementEndec.encode(ctx, JavaSerializer.this, element);
                 this.result.add(encoded.require("sequence element"));
             });
         }
 
         @Override
         public void end() {
-            EdmSerializer.this.consume(EdmElement.sequence(this.result));
+            JavaSerializer.this.consume(this.result);
         }
     }
 
@@ -146,7 +164,7 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
         private final Endec<V> valueEndec;
         private final SerializationContext ctx;
 
-        private final java.util.Map<String, EdmElement<?>> result;
+        private final java.util.Map<String, Object> result;
 
         private Map(Endec<V> valueEndec, SerializationContext ctx) {
             this.valueEndec = valueEndec;
@@ -157,21 +175,21 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
 
         @Override
         public void entry(String key, V value) {
-            EdmSerializer.this.frame(encoded -> {
-                this.valueEndec.encode(ctx, EdmSerializer.this, value);
+            JavaSerializer.this.frame(encoded -> {
+                this.valueEndec.encode(ctx, JavaSerializer.this, value);
                 this.result.put(key, encoded.require("map value"));
             });
         }
 
         @Override
         public void end() {
-            EdmSerializer.this.consume(EdmElement.consumeMap(this.result));
+            JavaSerializer.this.consume(this.result);
         }
     }
 
     private class Struct implements Serializer.Struct {
 
-        private final java.util.Map<String, EdmElement<?>> result;
+        private final java.util.Map<String, Object> result;
 
         private Struct() {
             this.result = new HashMap<>();
@@ -179,14 +197,21 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
 
         @Override
         public <F> Serializer.Struct field(String name, SerializationContext ctx, Endec<F> endec, F value, boolean mayOmit) {
-            EdmSerializer.this.frame(encoded -> {
-                endec.encode(ctx, EdmSerializer.this, value);
+            JavaSerializer.this.frame(encoded -> {
+                endec.encode(ctx, JavaSerializer.this, value);
 
                 var element = encoded.require("struct field");
 
-                if (mayOmit && element.equals(EdmElement.EMPTY)) return;
+                if (mayOmit && element.equals(Optional.empty())) return;
 
                 this.result.put(name, element);
+
+                CommentAttribute.addComment(ctx, comment -> {
+                    JavaSerializer.this.commentLookupMap
+                            .computeIfAbsent(this.result, object -> new HashMap<>())
+                            .put(name, comment);
+                });
+
             });
 
             return this;
@@ -194,7 +219,7 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
 
         @Override
         public void end() {
-            EdmSerializer.this.consume(EdmElement.consumeMap(this.result));
+            JavaSerializer.this.consume(this.result);
         }
     }
 }

@@ -1,8 +1,8 @@
 package io.wispforest.endec.format.data;
 
 import io.wispforest.endec.Endec;
-import io.wispforest.endec.Serializer;
 import io.wispforest.endec.SerializationContext;
+import io.wispforest.endec.Serializer;
 import io.wispforest.endec.util.VarInts;
 
 import java.io.DataOutput;

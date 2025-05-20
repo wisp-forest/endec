@@ -1,6 +1,5 @@
 package io.wispforest.endec.annotations;
 
-import io.wispforest.endec.Endec;
 import io.wispforest.endec.impl.CommentAttribute;
 import io.wispforest.endec.impl.ReflectiveEndecBuilder;
 
@@ -10,10 +9,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 ///
-/// An annotation to tell the [ReflectiveEndecBuilder] when looking at the given type to create an
-/// [Endec] from that it can use [ReflectiveEndecBuilder#createSealedEndec] to create an [Endec] that
-/// allows Encoding of all permitted classes.
+/// An annotation to tell the [ReflectiveEndecBuilder] when looking at the field to add a comment as
+/// [CommentAttribute] for a given context object passed
 ///
-@Target(ElementType.TYPE)
+@Target(ElementType.TYPE_USE)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface SealedPolymorphic {}
+public @interface Comment {
+    String comment();
+}

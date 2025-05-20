@@ -6,10 +6,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Indicates to the {@link io.wispforest.endec.impl.RecordEndec} that this record component
- * should be treated as nullable in serialization. Importantly, <b>this changes the serialized type of this
- * component to an optional</b>
+ * @deprecated Please use {@link IsNullable} instead!
  */
 @Target(ElementType.RECORD_COMPONENT)
 @Retention(RetentionPolicy.RUNTIME)
+@Deprecated
 public @interface NullableComponent {}

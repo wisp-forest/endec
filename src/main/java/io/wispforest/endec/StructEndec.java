@@ -1,23 +1,18 @@
 package io.wispforest.endec;
 
-import io.wispforest.endec.impl.AttributeEndecBuilder;
 import io.wispforest.endec.impl.AttributeStructEndecBuilder;
 import io.wispforest.endec.impl.StructEndecBuilder;
 import io.wispforest.endec.impl.StructField;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-/**
- * Marker and template interface for all endecs which serialize structs
- * <p>
- * Every such endec should extend this interface to profit from the implementation of {@link #mapCodec(SerializationAttribute...)}
- * and composability which allows {@link Endec#dispatchedStruct(Function, Function, Endec, String)} to work
- */
+/// Marker and template interface for all endecs which serialize structs
+/// 
+/// Every such endec should extend this interface to profit from the implementation of [#mapCodec(SerializationAttribute...)]
+/// and composability which allows [#dispatchedStruct(Function,Function,Endec,String)] to work
 public interface StructEndec<T> extends Endec<T> {
 
     void encodeStruct(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, T value);
@@ -72,6 +67,10 @@ public interface StructEndec<T> extends Endec<T> {
         return Endec.unit(instance);
     }
 
+    /// 
+    /// Creates Builder allowing for the adjustment of which [StructEndec] should be used when locating
+    /// [SerializationAttribute] on [#encode] [#decode 
+    /// 
     static <T> AttributeStructEndecBuilder<T> ifAttr(SerializationAttribute attribute, StructEndec<T> endec) {
         return new AttributeStructEndecBuilder<>(endec, attribute);
     }
