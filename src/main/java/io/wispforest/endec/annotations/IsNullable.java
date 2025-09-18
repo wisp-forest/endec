@@ -17,4 +17,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface IsNullable {
     boolean mayOmitField();
+
+    boolean mayOmitNullValues() default false;
 }

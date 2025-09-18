@@ -532,7 +532,7 @@ public class ReflectiveEndecBuilder {
         builder.registerTypeAdjuster(IsNullable.class, new AnnotatedAdjuster<>() {
             @Override
             public <T> AdjustmentResult<T> adjustEndec(AnnotatedType annotatedType, IsNullable annotation, Endec<T> base) {
-                return AdjustmentResult.of(new OptionalEndec<>(base.optionalOf(), () -> null, annotation.mayOmitField()));
+                return AdjustmentResult.of(new OptionalEndec<>(base.optionalOf(), () -> null, annotation.mayOmitNullValues() ? Objects::isNull : null, annotation.mayOmitField()));
             }
         });
 

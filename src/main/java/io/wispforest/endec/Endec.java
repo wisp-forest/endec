@@ -3,7 +3,6 @@ package io.wispforest.endec;
 import io.wispforest.endec.impl.*;
 import io.wispforest.endec.util.MapCarrier;
 import io.wispforest.endec.util.RangeNumberException;
-import org.checkerframework.checker.units.qual.min;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -528,16 +527,27 @@ public interface Endec<T> {
      * present optional &lt;-&gt; value and empty optional &lt;-&gt; null
      */
     default Endec<@Nullable T> nullableOf() {
-        return optionalOf((T) null);
+        return nullableOf(false);
+    }
+
+    default Endec<@Nullable T> nullableOf(boolean mayOmitNullValues) {
+        return optionalOf((T) null, mayOmitNullValues ? Objects::isNull : null);
     }
 
     default Endec<T> optionalOf(T defaultValue) {
         return optionalOf(() -> defaultValue);
     }
 
-
     default Endec<T> optionalOf(Supplier<T> defaultValue) {
-        return new OptionalEndec<T>(this.optionalOf(), defaultValue);
+        return new OptionalEndec<T>(this.optionalOf(), defaultValue, null);
+    }
+
+    default Endec<T> optionalOf(T defaultValue, Predicate<T> isDefaultValue) {
+        return optionalOf(() -> defaultValue, isDefaultValue);
+    }
+
+    default Endec<T> optionalOf(Supplier<T> defaultValue, Predicate<T> isDefaultValue) {
+        return new OptionalEndec<T>(this.optionalOf(), defaultValue, isDefaultValue);
     }
 
     // --- Conversion ---
@@ -576,17 +586,32 @@ public interface Endec<T> {
     }
 
     default <S> StructField<S, @Nullable T> nullableFieldOf(String name, Function<S, @Nullable T> getter) {
-        return optionalFieldOf(name, getter, (T) null);
+        return nullableFieldOf(name, getter, false);
+    }
+
+    default <S> StructField<S, @Nullable T> nullableFieldOf(String name, Function<S, @Nullable T> getter, boolean mayOmitNullValues) {
+        return optionalFieldOf(name, getter, (T) null, mayOmitNullValues ? Objects::isNull : null);
     }
 
     default <S> StructField<S, T> optionalFieldOf(String name, Function<S, T> getter, @Nullable T defaultValue) {
-        return new StructField<>(name, this.optionalOf(defaultValue), getter, defaultValue);
+        return optionalFieldOf(name, getter, () -> defaultValue);
     }
 
     default <S> StructField<S, T> optionalFieldOf(String name, Function<S, T> getter, Supplier<@Nullable T> defaultValue) {
-        Objects.requireNonNull(defaultValue, "Supplier was found to be null which is not permitted for optionalFieldOf");
+        Objects.requireNonNull(defaultValue, "defaultValue Supplier was found to be null which is not permitted for optionalFieldOf");
 
         return new StructField<>(name, this.optionalOf(defaultValue), getter, defaultValue);
+    }
+
+    default <S> StructField<S, T> optionalFieldOf(String name, Function<S, T> getter, @Nullable T defaultValue, Predicate<T> isDefaultValue) {
+        return optionalFieldOf(name, getter, () -> defaultValue, isDefaultValue);
+    }
+
+    default <S> StructField<S, T> optionalFieldOf(String name, Function<S, T> getter, Supplier<@Nullable T> defaultValue, Predicate<T> isDefaultValue) {
+        Objects.requireNonNull(defaultValue, "defaultValue Supplier was found to be null which is not permitted for optionalFieldOf");
+        Objects.requireNonNull(isDefaultValue, "isDefaultValue Predicate was found to be null which is not permitted for optionalFieldOf");
+
+        return new StructField<>(name, this.optionalOf(defaultValue, isDefaultValue), getter, defaultValue);
     }
 
     @FunctionalInterface
