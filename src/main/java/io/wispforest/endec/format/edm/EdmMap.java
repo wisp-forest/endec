@@ -21,12 +21,12 @@ public final class EdmMap extends EdmElement<Map<String, EdmElement<?>>> impleme
     @Override
     public <T> T getWithErrors(SerializationContext ctx, @NotNull KeyedEndec<T> key) {
         if (!this.has(key)) return key.defaultValue();
-        return key.endec().decodeFully(ctx, EdmDeserializer::of, this.map.get(key.key()));
+        return key.endec().decodeFully(ctx.pushField(key.key()), EdmDeserializer::of, this.map.get(key.key()));
     }
 
     @Override
     public <T> void put(SerializationContext ctx, @NotNull KeyedEndec<T> key, @NotNull T value) {
-        this.map.put(key.key(), key.endec().encodeFully(ctx, EdmSerializer::of, value));
+        this.map.put(key.key(), key.endec().encodeFully(ctx.pushField(key.key()), EdmSerializer::of, value));
     }
 
     @Override

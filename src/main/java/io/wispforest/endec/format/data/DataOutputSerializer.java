@@ -132,6 +132,8 @@ public class DataOutputSerializer<D extends DataOutput> implements Serializer<D>
         private final SerializationContext ctx;
         protected final Endec<V> valueEndec;
 
+        private int index = 0;
+
         protected Sequence(SerializationContext ctx, Endec<V> valueEndec) {
             this.ctx = ctx;
             this.valueEndec = valueEndec;
@@ -139,18 +141,19 @@ public class DataOutputSerializer<D extends DataOutput> implements Serializer<D>
 
         @Override
         public void element(V element) {
-            this.valueEndec.encode(this.ctx, DataOutputSerializer.this, element);
+            this.valueEndec.encode(this.ctx.pushIndex(index), DataOutputSerializer.this, element);
+            index++;
         }
 
         @Override
         public void entry(String key, V value) {
             DataOutputSerializer.this.writeString(this.ctx, key);
-            this.valueEndec.encode(this.ctx, DataOutputSerializer.this, value);
+            this.valueEndec.encode(this.ctx.pushField(key), DataOutputSerializer.this, value);
         }
 
         @Override
         public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value, boolean mayOmit) {
-            endec.encode(ctx, DataOutputSerializer.this, value);
+            endec.encode(ctx.pushField(name), DataOutputSerializer.this, value);
             return this;
         }
 

@@ -48,7 +48,7 @@ public interface StructEndec<T> extends Endec<T> {
 
     @Override
     default T decode(SerializationContext ctx, Deserializer<?> deserializer) {
-        return this.decodeStruct(ctx, deserializer, deserializer.struct());
+        return this.decodeStruct(ctx, deserializer, deserializer.struct(ctx));
     }
 
     /**

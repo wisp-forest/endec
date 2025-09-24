@@ -1,34 +1,47 @@
 package io.wispforest.endec;
 
 import io.wispforest.endec.impl.MissingAttributeValueException;
+import io.wispforest.endec.impl.trace.EndecTrace;
+import io.wispforest.endec.impl.trace.EndecMalformedInputException;
+
+import static io.wispforest.endec.impl.trace.EndecTraceElement.*;
 
 import java.util.*;
+import java.util.function.Function;
 
 public final class SerializationContext {
 
-    private static final SerializationContext EMPTY = new SerializationContext(Map.of(), Set.of());
+    private static final SerializationContext EMPTY = new SerializationContext(Map.of(), Set.of(), new EndecTrace());
 
     private final Map<SerializationAttribute, Object> attributeValues;
     private final Set<SerializationAttribute> suppressedAttributes;
+    private final EndecTrace trace;
 
-    private SerializationContext(Map<SerializationAttribute, Object> attributeValues, Set<SerializationAttribute> suppressedAttributes) {
+    private SerializationContext(Map<SerializationAttribute, Object> attributeValues, Set<SerializationAttribute> suppressedAttributes, EndecTrace trace) {
         this.attributeValues = Collections.unmodifiableMap(attributeValues);
         this.suppressedAttributes = Collections.unmodifiableSet(suppressedAttributes);
+        this.trace = trace;
     }
+
+    //--
 
     public static SerializationContext empty() {
         return EMPTY;
     }
 
     public static SerializationContext attributes(SerializationAttribute.Instance... attributes) {
-        if (attributes.length == 0) return EMPTY;
-        return new SerializationContext(unpackAttributes(attributes), Set.of());
+        return (attributes.length == 0)
+            ? EMPTY
+            : new SerializationContext(unpackAttributes(attributes), Set.of(), new EndecTrace());
     }
 
     public static SerializationContext suppressed(SerializationAttribute... attributes) {
-        if (attributes.length == 0) return EMPTY;
-        return new SerializationContext(Map.of(), Set.of(attributes));
+        return (attributes.length == 0)
+            ? EMPTY
+            : new SerializationContext(Map.of(), Set.of(attributes), new EndecTrace());
     }
+
+    //--
 
     public SerializationContext withAttributes(SerializationAttribute.Instance... attributes) {
         var newAttributes = unpackAttributes(attributes);
@@ -38,7 +51,7 @@ public final class SerializationContext {
             }
         });
 
-        return new SerializationContext(newAttributes, this.suppressedAttributes);
+        return new SerializationContext(newAttributes, this.suppressedAttributes, this.trace);
     }
 
     public SerializationContext withoutAttributes(SerializationAttribute... attributes) {
@@ -47,14 +60,14 @@ public final class SerializationContext {
             newAttributes.remove(attribute);
         }
 
-        return new SerializationContext(newAttributes, this.suppressedAttributes);
+        return new SerializationContext(newAttributes, this.suppressedAttributes, this.trace);
     }
 
     public SerializationContext withSuppressed(SerializationAttribute... attributes) {
         var newSuppressed = new HashSet<SerializationAttribute>(this.suppressedAttributes);
         newSuppressed.addAll(Arrays.asList(attributes));
 
-        return new SerializationContext(this.attributeValues, newSuppressed);
+        return new SerializationContext(this.attributeValues, newSuppressed, this.trace);
     }
 
     public SerializationContext withoutSuppressed(SerializationAttribute... attributes) {
@@ -63,13 +76,13 @@ public final class SerializationContext {
             newSuppressed.remove(attribute);
         }
 
-        return new SerializationContext(this.attributeValues, newSuppressed);
+        return new SerializationContext(this.attributeValues, newSuppressed, this.trace);
     }
 
     public SerializationContext and(SerializationContext other) {
         if (this.isEmpty()) {
             return other.isEmpty() ? EMPTY : other;
-        }  else if(other.isEmpty()) {
+        } else if(other.isEmpty()) {
             return this;
         }
 
@@ -79,8 +92,14 @@ public final class SerializationContext {
         var newSuppressed = new HashSet<>(this.suppressedAttributes);
         newSuppressed.addAll(other.suppressedAttributes);
 
-        return new SerializationContext(newAttributeValues, newSuppressed);
+        return new SerializationContext(newAttributeValues, newSuppressed, this.trace);
     }
+
+    public boolean isEmpty() {
+        return this.attributeValues.isEmpty() && this.suppressedAttributes.isEmpty();
+    }
+
+    //--
 
     public boolean hasAttribute(SerializationAttribute attribute) {
         return this.attributeValues.containsKey(attribute) && !this.suppressedAttributes.contains(attribute);
@@ -99,9 +118,25 @@ public final class SerializationContext {
         return this.getAttributeValue(attribute);
     }
 
-    public boolean isEmpty() {
-        return this.attributeValues.isEmpty() && this.suppressedAttributes.isEmpty();
+    //--
+
+    public SerializationContext pushField(String fieldName) {
+        return new SerializationContext(this.attributeValues, this.suppressedAttributes, this.trace.push(new FieldTraceElement(fieldName)));
     }
+
+    public SerializationContext pushIndex(int index) {
+        return new SerializationContext(this.attributeValues, this.suppressedAttributes, this.trace.push(new IndexTraceElement(index)));
+    }
+
+    public void throwMalformedInput(String message) throws EndecMalformedInputException {
+        throw new EndecMalformedInputException(trace, message);
+    }
+
+    public <E extends Exception> E exceptionWithTrace(Function<EndecTrace, E> exceptionFactory) {
+        return exceptionFactory.apply(trace);
+    }
+
+    //--
 
     private static Map<SerializationAttribute, Object> unpackAttributes(SerializationAttribute.Instance[] attributes) {
         var attributeValues = new HashMap<SerializationAttribute, Object>();

@@ -127,7 +127,7 @@ public class ByteBufDeserializer implements Deserializer<ByteBuf> {
     }
 
     @Override
-    public Struct struct() {
+    public Struct struct(SerializationContext context) {
         return new Sequence<>(null, null, 0);
     }
 

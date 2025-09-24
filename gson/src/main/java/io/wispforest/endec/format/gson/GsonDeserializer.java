@@ -9,6 +9,7 @@ import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
+import java.util.ListIterator;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -31,32 +32,32 @@ public class GsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
 
     @Override
     public byte readByte(SerializationContext ctx) {
-        return this.getValue().getAsByte();
+        return this.verifyAndGetValue(ctx, JsonPrimitive.class).getAsByte();
     }
 
     @Override
     public short readShort(SerializationContext ctx) {
-        return this.getValue().getAsShort();
+        return this.verifyAndGetValue(ctx, JsonPrimitive.class).getAsShort();
     }
 
     @Override
     public int readInt(SerializationContext ctx) {
-        return this.getValue().getAsInt();
+        return this.verifyAndGetValue(ctx, JsonPrimitive.class).getAsInt();
     }
 
     @Override
     public long readLong(SerializationContext ctx) {
-        return this.getValue().getAsLong();
+        return this.verifyAndGetValue(ctx, JsonPrimitive.class).getAsLong();
     }
 
     @Override
     public float readFloat(SerializationContext ctx) {
-        return this.getValue().getAsFloat();
+        return this.verifyAndGetValue(ctx, JsonPrimitive.class).getAsFloat();
     }
 
     @Override
     public double readDouble(SerializationContext ctx) {
-        return this.getValue().getAsDouble();
+        return this.verifyAndGetValue(ctx, JsonPrimitive.class).getAsDouble();
     }
 
     // ---
@@ -75,17 +76,17 @@ public class GsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
 
     @Override
     public boolean readBoolean(SerializationContext ctx) {
-        return this.getValue().getAsBoolean();
+        return this.verifyAndGetValue(ctx, JsonPrimitive.class).getAsBoolean();
     }
 
     @Override
     public String readString(SerializationContext ctx) {
-        return this.getValue().getAsString();
+        return this.verifyAndGetValue(ctx, JsonPrimitive.class).getAsString();
     }
 
     @Override
     public byte[] readBytes(SerializationContext ctx) {
-        var array = this.getValue().getAsJsonArray().asList();
+        var array = this.verifyAndGetValue(ctx, JsonArray.class).asList();
 
         var result = new byte[array.size()];
         for (int i = 0; i < array.size(); i++) {
@@ -107,17 +108,29 @@ public class GsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
 
     @Override
     public <E> Deserializer.Sequence<E> sequence(SerializationContext ctx, Endec<E> elementEndec) {
-        return new Sequence<>(ctx, elementEndec, (JsonArray) this.getValue());
+        return new Sequence<>(ctx, elementEndec, this.verifyAndGetValue(ctx, JsonArray.class));
     }
 
     @Override
     public <V> Deserializer.Map<V> map(SerializationContext ctx, Endec<V> valueEndec) {
-        return new Map<>(ctx, valueEndec, ((JsonObject) this.getValue()));
+        return new Map<>(ctx, valueEndec, this.verifyAndGetValue(ctx, JsonObject.class));
     }
 
     @Override
-    public Deserializer.Struct struct() {
-        return new Struct((JsonObject) this.getValue());
+    public Deserializer.Struct struct(SerializationContext ctx) {
+        return new Struct(this.verifyAndGetValue(ctx, JsonObject.class));
+    }
+
+    // ---
+
+    private <T extends JsonElement> T verifyAndGetValue(SerializationContext ctx, Class<T> clazz) {
+        var value = getValue();
+
+        if (!clazz.isInstance(value)) {
+            ctx.throwMalformedInput("Expected " + clazz.getSimpleName() + ", got a " + value.getClass().getSimpleName());
+        }
+
+        return (T) value;
     }
 
     // ---
@@ -179,14 +192,14 @@ public class GsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
 
         private final SerializationContext ctx;
         private final Endec<V> valueEndec;
-        private final Iterator<JsonElement> elements;
+        private final ListIterator<JsonElement> elements;
         private final int size;
 
         private Sequence(SerializationContext ctx, Endec<V> valueEndec, JsonArray elements) {
             this.ctx = ctx;
             this.valueEndec = valueEndec;
 
-            this.elements = elements.iterator();
+            this.elements = elements.asList().listIterator();
             this.size = elements.size();
         }
 
@@ -202,10 +215,11 @@ public class GsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
 
         @Override
         public V next() {
+            var index = this.elements.nextIndex();
             var element = this.elements.next();
             return GsonDeserializer.this.frame(
                     () -> element,
-                    () -> this.valueEndec.decode(this.ctx, GsonDeserializer.this)
+                    () -> this.valueEndec.decode(this.ctx.pushIndex(index), GsonDeserializer.this)
             );
         }
     }
@@ -240,7 +254,7 @@ public class GsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
             var entry = this.entries.next();
             return GsonDeserializer.this.frame(
                     entry::getValue,
-                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx, GsonDeserializer.this))
+                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx.pushField(entry.getKey()), GsonDeserializer.this))
             );
         }
     }
@@ -265,7 +279,7 @@ public class GsonDeserializer extends RecursiveDeserializer<JsonElement> impleme
             }
             return GsonDeserializer.this.frame(
                     () -> element,
-                    () -> endec.decode(ctx, GsonDeserializer.this)
+                    () -> endec.decode(ctx.pushField(name), GsonDeserializer.this)
             );
         }
     }

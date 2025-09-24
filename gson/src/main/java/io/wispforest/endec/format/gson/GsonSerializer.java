@@ -146,7 +146,7 @@ public class GsonSerializer extends RecursiveSerializer<JsonElement> implements 
         @Override
         public void entry(String key, V value) {
             GsonSerializer.this.frame(encoded -> {
-                this.valueEndec.encode(this.ctx, GsonSerializer.this, value);
+                this.valueEndec.encode(this.ctx.pushField(key), GsonSerializer.this, value);
                 this.result.add(key, encoded.require("map value"));
             });
         }
@@ -154,7 +154,7 @@ public class GsonSerializer extends RecursiveSerializer<JsonElement> implements 
         @Override
         public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value, boolean mayOmit) {
             GsonSerializer.this.frame(encoded -> {
-                endec.encode(ctx, GsonSerializer.this, value);
+                endec.encode(ctx.pushField(name), GsonSerializer.this, value);
 
                 var element = encoded.require("struct field");
 
@@ -197,7 +197,7 @@ public class GsonSerializer extends RecursiveSerializer<JsonElement> implements 
         @Override
         public void element(V element) {
             GsonSerializer.this.frame(encoded -> {
-                this.valueEndec.encode(this.ctx, GsonSerializer.this, element);
+                this.valueEndec.encode(this.ctx.pushIndex(this.result.size()), GsonSerializer.this, element);
                 this.result.add(encoded.require("sequence element"));
             });
         }

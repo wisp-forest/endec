@@ -1,12 +1,13 @@
 package io.wispforest.endec.format.edm;
 
+import com.google.common.collect.Lists;
 import io.wispforest.endec.Deserializer;
 import io.wispforest.endec.Endec;
 import io.wispforest.endec.SerializationContext;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+
+import static io.wispforest.endec.format.edm.EdmElement.Type.*;
 
 public class LenientEdmDeserializer extends EdmDeserializer {
 
@@ -18,45 +19,55 @@ public class LenientEdmDeserializer extends EdmDeserializer {
         return new LenientEdmDeserializer(serialized);
     }
 
+    private static final EdmElement.Type[] NUMBER_TYPES = new EdmElement.Type[]{I8, U8, I16, U16, I32, U32, I64, U64, F32, F64};
+
     // ---
 
     @Override
     public byte readByte(SerializationContext ctx) {
-        return this.getValue().<Number>cast().byteValue();
+        return this.getNumber(ctx).byteValue();
     }
 
     @Override
     public short readShort(SerializationContext ctx) {
-        return this.getValue().<Number>cast().shortValue();
+        return this.getNumber(ctx).shortValue();
     }
 
     @Override
     public int readInt(SerializationContext ctx) {
-        return this.getValue().<Number>cast().intValue();
+        return this.getNumber(ctx).intValue();
     }
 
     @Override
     public long readLong(SerializationContext ctx) {
-        return this.getValue().<Number>cast().longValue();
+        return this.getNumber(ctx).longValue();
     }
 
     // ---
 
     @Override
     public float readFloat(SerializationContext ctx) {
-        return this.getValue().<Number>cast().floatValue();
+        return this.getNumber(ctx).floatValue();
     }
 
     @Override
     public double readDouble(SerializationContext ctx) {
-        return this.getValue().<Number>cast().doubleValue();
+        return this.getNumber(ctx).doubleValue();
+    }
+
+    // ---
+
+    public Number getNumber(SerializationContext ctx) {
+        return this.getValueForType(ctx, Arrays.asList(NUMBER_TYPES));
     }
 
     // ---
 
     @Override
     public boolean readBoolean(SerializationContext ctx) {
-        if(this.getValue().value() instanceof Number number){
+        var value = this.getValueForType(ctx, Lists.asList(BOOLEAN, NUMBER_TYPES));
+
+        if(value instanceof Number number){
             return number.byteValue() == 1;
         }
 
@@ -80,7 +91,7 @@ public class LenientEdmDeserializer extends EdmDeserializer {
 
     @Override
     public <E> Deserializer.Sequence<E> sequence(SerializationContext ctx, Endec<E> elementEndec) {
-        var value = this.getValue().value();
+        var value = this.getValueForType(ctx, List.of(BYTES, SEQUENCE));
 
         List<EdmElement<?>> list;
 

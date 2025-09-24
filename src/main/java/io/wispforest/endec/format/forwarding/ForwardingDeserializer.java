@@ -90,8 +90,8 @@ public class ForwardingDeserializer<T> implements Deserializer<T> {
     }
 
     @Override
-    public Struct struct() {
-        return this.delegate.struct();
+    public Struct struct(SerializationContext ctx) {
+        return this.delegate.struct(ctx);
     }
 
     @Override

@@ -30,7 +30,8 @@ public interface Deserializer<T> {
 
     <E> Sequence<E> sequence(SerializationContext ctx, Endec<E> elementEndec);
     <V> Map<V> map(SerializationContext ctx, Endec<V> valueEndec);
-    Struct struct();
+    
+    Struct struct(SerializationContext ctx);
 
     <V> V tryRead(Function<Deserializer<T>, V> reader);
 

@@ -4,10 +4,10 @@ import io.wispforest.endec.*;
 import io.wispforest.endec.util.RecursiveDeserializer;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Supplier;
+
+import static io.wispforest.endec.format.edm.EdmElement.Type.*;
 
 public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implements SelfDescribedDeserializer<EdmElement<?>> {
 
@@ -23,34 +23,34 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
 
     @Override
     public byte readByte(SerializationContext ctx) {
-        return this.getValue().cast();
+        return this.getValueForType(ctx, I8);
     }
 
     @Override
     public short readShort(SerializationContext ctx) {
-        return this.getValue().cast();
+        return this.getValueForType(ctx, I16);
     }
 
     @Override
     public int readInt(SerializationContext ctx) {
-        return this.getValue().cast();
+        return this.getValueForType(ctx, I32);
     }
 
     @Override
     public long readLong(SerializationContext ctx) {
-        return this.getValue().cast();
+        return this.getValueForType(ctx, I64);
     }
 
     // ---
 
     @Override
     public float readFloat(SerializationContext ctx) {
-        return this.getValue().cast();
+        return this.getValueForType(ctx, F32);
     }
 
     @Override
     public double readDouble(SerializationContext ctx) {
-        return this.getValue().cast();
+        return this.getValueForType(ctx, F64);
     }
 
     // ---
@@ -69,22 +69,22 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
 
     @Override
     public boolean readBoolean(SerializationContext ctx) {
-        return this.getValue().cast();
+        return this.getValueForType(ctx, BOOLEAN);
     }
 
     @Override
     public String readString(SerializationContext ctx) {
-        return this.getValue().cast();
+        return this.getValueForType(ctx, STRING);
     }
 
     @Override
     public byte[] readBytes(SerializationContext ctx) {
-        return this.getValue().cast();
+        return this.getValueForType(ctx, BYTES);
     }
 
     @Override
     public <V> Optional<V> readOptional(SerializationContext ctx, Endec<V> endec) {
-        var optional = this.getValue().<Optional<EdmElement<?>>>cast();
+        var optional = this.<Optional<EdmElement<?>>>getValueForType(ctx, OPTIONAL);
         if (optional.isPresent()) {
             return this.frame(
                     optional::get,
@@ -99,17 +99,37 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
 
     @Override
     public <E> Deserializer.Sequence<E> sequence(SerializationContext ctx, Endec<E> elementEndec) {
-        return new Sequence<>(ctx, elementEndec, this.getValue().cast());
+        return new Sequence<>(ctx, elementEndec, this.getValueForType(ctx, SEQUENCE));
     }
 
     @Override
     public <V> Deserializer.Map<V> map(SerializationContext ctx, Endec<V> valueEndec) {
-        return new Map<>(ctx, valueEndec, this.getValue().cast());
+        return new Map<>(ctx, valueEndec, this.getValueForType(ctx, MAP));
     }
 
     @Override
-    public Deserializer.Struct struct() {
-        return new Struct(this.getValue().cast());
+    public Deserializer.Struct struct(SerializationContext ctx) {
+        return new Struct(this.getValueForType(ctx, MAP));
+    }
+
+    // ---
+
+    protected <T> T getValueForType(SerializationContext ctx, EdmElement.Type type) {
+        return getValueForType(ctx, List.of(type));
+    }
+
+    protected <T> T getValueForType(SerializationContext ctx, List<EdmElement.Type> types) {
+        var value = getValue();
+
+        if (!types.contains(value.type())) {
+            var typeMessage = (types.size() == 1)
+                ? "a " + types.get(0)
+                : "any [" + String.join(",", types.stream().map(Object::toString).toList()) + "]";
+
+            ctx.throwMalformedInput("Expected " + typeMessage + ", got a " + value.type().formatName());
+        }
+
+        return value.cast();
     }
 
     // ---
@@ -150,14 +170,14 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
 
         private final SerializationContext ctx;
         private final Endec<V> valueEndec;
-        private final Iterator<EdmElement<?>> elements;
+        private final ListIterator<EdmElement<?>> elements;
         private final int size;
 
         Sequence(SerializationContext ctx, Endec<V> valueEndec, List<EdmElement<?>> elements) {
             this.ctx = ctx;
             this.valueEndec = valueEndec;
 
-            this.elements = elements.iterator();
+            this.elements = elements.listIterator();
             this.size = elements.size();
         }
 
@@ -173,10 +193,11 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
 
         @Override
         public V next() {
+            var index = this.elements.nextIndex();
             var element = this.elements.next();
             return EdmDeserializer.this.frame(
                     () -> element,
-                    () -> this.valueEndec.decode(this.ctx, EdmDeserializer.this)
+                    () -> this.valueEndec.decode(this.ctx.pushIndex(index), EdmDeserializer.this)
             );
         }
     }
@@ -211,7 +232,7 @@ public class EdmDeserializer extends RecursiveDeserializer<EdmElement<?>> implem
             var entry = this.entries.next();
             return EdmDeserializer.this.frame(
                     entry::getValue,
-                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx, EdmDeserializer.this))
+                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx.pushField(entry.getKey()), EdmDeserializer.this))
             );
         }
     }

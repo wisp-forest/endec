@@ -6,6 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -33,32 +34,32 @@ public class JavaDeserializer extends RecursiveDeserializer<Object> implements S
 
     @Override
     public byte readByte(SerializationContext ctx) {
-        return getAndCast(byte.class);
+        return this.getAndCast(ctx, byte.class);
     }
 
     @Override
     public short readShort(SerializationContext ctx) {
-        return getAndCast(short.class);
+        return this.getAndCast(ctx, short.class);
     }
 
     @Override
     public int readInt(SerializationContext ctx) {
-        return getAndCast(int.class);
+        return this.getAndCast(ctx, int.class);
     }
 
     @Override
     public long readLong(SerializationContext ctx) {
-        return getAndCast(long.class);
+        return this.getAndCast(ctx, long.class);
     }
 
     @Override
     public float readFloat(SerializationContext ctx) {
-        return getAndCast(float.class);
+        return this.getAndCast(ctx, float.class);
     }
 
     @Override
     public double readDouble(SerializationContext ctx) {
-        return getAndCast(double.class);
+        return this.getAndCast(ctx, double.class);
     }
 
     @Override
@@ -73,37 +74,37 @@ public class JavaDeserializer extends RecursiveDeserializer<Object> implements S
 
     @Override
     public boolean readBoolean(SerializationContext ctx) {
-        return getAndCast(boolean.class);
+        return this.getAndCast(ctx, boolean.class);
     }
 
     @Override
     public String readString(SerializationContext ctx) {
-        return getAndCast(String.class);
+        return this.getAndCast(ctx, String.class);
     }
 
     @Override
     public byte[] readBytes(SerializationContext ctx) {
-        return getAndCast("byte[]", object -> object instanceof byte[], object -> (byte[]) object);
+        return this.getAndCast(ctx, "byte[]", object -> object instanceof byte[], object -> (byte[]) object);
     }
 
     @Override
     public <V> Optional<V> readOptional(SerializationContext ctx, Endec<V> endec) {
-        return getAndCast("Optional<?>", object -> object instanceof Optional<?>, object -> (Optional<V>) object);
+        return this.getAndCast(ctx, "Optional<?>", object -> object instanceof Optional<?>, object -> (Optional<V>) object);
     }
 
     @Override
     public <E> Deserializer.Sequence<E> sequence(SerializationContext ctx, Endec<E> elementEndec) {
-        return new Sequence<>(ctx, elementEndec, this.getAndCast("List<?>", object -> object instanceof List<?>, object -> (List<Object>) object));
+        return new Sequence<>(ctx, elementEndec, this.getAndCast(ctx, "List<?>", object -> object instanceof List<?>, object -> (List<Object>) object));
     }
 
     @Override
     public <V> Deserializer.Map<V> map(SerializationContext ctx, Endec<V> valueEndec) {
-        return new Map<>(ctx, valueEndec, this.getAndCast("Map<String, ?>", object -> object instanceof java.util.Map<?,?>, object -> (java.util.Map<String, Object>) object));
+        return new Map<>(ctx, valueEndec, this.getAndCast(ctx, "Map<String, ?>", object -> object instanceof java.util.Map<?,?>, object -> (java.util.Map<String, Object>) object));
     }
 
     @Override
-    public Deserializer.Struct struct() {
-        return new Struct(this.getAndCast("Map<String, ?>", object -> object instanceof java.util.Map<?,?>, object -> (java.util.Map<String, Object>) object));
+    public Deserializer.Struct struct(SerializationContext ctx) {
+        return new Struct(this.getAndCast(ctx, "Map<String, ?>", object -> object instanceof java.util.Map<?,?>, object -> (java.util.Map<String, Object>) object));
     }
 
     // ---
@@ -150,25 +151,31 @@ public class JavaDeserializer extends RecursiveDeserializer<Object> implements S
         }
     }
 
-    private <T> T getAndCast(Class<T> clazz) {
-        return getAndCast(clazz.getSimpleName(), object -> clazz.isAssignableFrom(object.getClass()), clazz::cast);
+    private <T> T getAndCast(SerializationContext ctx, Class<T> clazz) {
+        return getAndCast(ctx, clazz.getSimpleName(), object -> clazz.isAssignableFrom(object.getClass()), clazz::cast);
     }
 
-    private <T> T getAndCast(String clazzName, Predicate<Object> isCompatible, Function<Object, T> cast) {
+    private <T> T getAndCast(SerializationContext ctx, String clazzName, Predicate<Object> isCompatible, Function<Object, T> cast) {
         var value = getValue();
 
         if (value == null) {
-            throw new NullPointerException("Unable to get the value as [" + clazzName + "] since the value is currently null!");
+            throw ctx.<NullPointerException>exceptionWithTrace(trace -> {
+                throw new NullPointerException("Unable to get the value as [" + clazzName + "] since the value is currently null! [Trace: " + trace.toString() + "]");
+            });
         }
 
         if (!isCompatible.test(value)) {
-            throw new IllegalStateException("Unable to cast the given value [" + value + "] to type of [" + clazzName + "] as such is not the compatible type!");
+            throw ctx.<NullPointerException>exceptionWithTrace(trace -> {
+                throw new IllegalStateException("Unable to cast the given value [" + value + "] to type of [" + clazzName + "] as such is not the compatible type! [Trace: " + trace.toString() + "]");
+            });
         }
 
         try {
             return cast.apply(value);
         } catch (Exception e) {
-            throw new IllegalStateException("Unable to cast the given java value [" + value + "] to the desired type [" + clazzName + "] as an exception has occurred: ", e);
+            throw ctx.<NullPointerException>exceptionWithTrace(trace -> {
+                throw new IllegalStateException("Unable to cast the given java value [" + value + "] to the desired type [" + clazzName + "] as an exception has occurred [Trace: " + trace.toString() + "]:", e);
+            });
         }
     }
 
@@ -176,14 +183,14 @@ public class JavaDeserializer extends RecursiveDeserializer<Object> implements S
 
         private final SerializationContext ctx;
         private final Endec<V> valueEndec;
-        private final Iterator<Object> elements;
+        private final ListIterator<Object> elements;
         private final int size;
 
         Sequence(SerializationContext ctx, Endec<V> valueEndec, List<Object> elements) {
             this.ctx = ctx;
             this.valueEndec = valueEndec;
 
-            this.elements = elements.iterator();
+            this.elements = elements.listIterator();
             this.size = elements.size();
         }
 
@@ -199,10 +206,11 @@ public class JavaDeserializer extends RecursiveDeserializer<Object> implements S
 
         @Override
         public V next() {
+            var index = this.elements.nextIndex();
             var element = this.elements.next();
             return JavaDeserializer.this.frame(
                     () -> element,
-                    () -> this.valueEndec.decode(this.ctx, JavaDeserializer.this)
+                    () -> this.valueEndec.decode(this.ctx.pushIndex(index), JavaDeserializer.this)
             );
         }
     }
@@ -237,7 +245,7 @@ public class JavaDeserializer extends RecursiveDeserializer<Object> implements S
             var entry = this.entries.next();
             return JavaDeserializer.this.frame(
                     entry::getValue,
-                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx, JavaDeserializer.this))
+                    () -> java.util.Map.entry(entry.getKey(), this.valueEndec.decode(this.ctx.pushField(entry.getKey()), JavaDeserializer.this))
             );
         }
     }
@@ -262,7 +270,7 @@ public class JavaDeserializer extends RecursiveDeserializer<Object> implements S
             }
             return JavaDeserializer.this.frame(
                     () -> element,
-                    () -> endec.decode(ctx, JavaDeserializer.this)
+                    () -> endec.decode(ctx.pushField(name), JavaDeserializer.this)
             );
         }
     }

@@ -29,36 +29,36 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
 
     @Override
     public byte readByte(SerializationContext ctx) {
-        return readPrimitive(Number.class).byteValue();
+        return readPrimitive(ctx, Number.class).byteValue();
     }
 
     @Override
     public short readShort(SerializationContext ctx) {
-        return readPrimitive(Number.class).shortValue();
+        return readPrimitive(ctx, Number.class).shortValue();
     }
 
     @Override
     public int readInt(SerializationContext ctx) {
-        return readPrimitive(Number.class).intValue();
+        return readPrimitive(ctx, Number.class).intValue();
     }
 
     @Override
     public long readLong(SerializationContext ctx) {
-        return readPrimitive(Number.class).longValue();
+        return readPrimitive(ctx, Number.class).longValue();
     }
 
     @Override
     public float readFloat(SerializationContext ctx) {
-        return readPrimitive(Number.class).floatValue();
+        return readPrimitive(ctx, Number.class).floatValue();
     }
 
     @Override
     public double readDouble(SerializationContext ctx) {
-        return readPrimitive(Number.class).doubleValue();
+        return readPrimitive(ctx, Number.class).doubleValue();
     }
 
-    private <T> T readPrimitive(Class<T> clazz){
-        return clazz.cast(((JsonPrimitive) this.getValue()).getValue());
+    private <T> T readPrimitive(SerializationContext ctx, Class<T> clazz){
+        return clazz.cast(this.verifyAndGetValue(ctx, JsonPrimitive.class).getValue());
     }
 
     // ---
@@ -77,17 +77,17 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
 
     @Override
     public boolean readBoolean(SerializationContext ctx) {
-        return readPrimitive(Boolean.class);
+        return readPrimitive(ctx, Boolean.class);
     }
 
     @Override
     public String readString(SerializationContext ctx) {
-        return readPrimitive(String.class);
+        return readPrimitive(ctx, String.class);
     }
 
     @Override
     public byte[] readBytes(SerializationContext ctx) {
-        var array = ((JsonArray) this.getValue()).toArray();
+        var array = this.verifyAndGetValue(ctx, JsonArray.class).toArray();
 
         var result = new byte[array.length];
         for (int i = 0; i < array.length; i++) {
@@ -109,17 +109,29 @@ public class JanksonDeserializer extends RecursiveDeserializer<JsonElement> impl
 
     @Override
     public <E> Deserializer.Sequence<E> sequence(SerializationContext ctx, Endec<E> elementEndec) {
-        return new Sequence<>(ctx, elementEndec, (JsonArray) this.getValue());
+        return new Sequence<>(ctx, elementEndec, this.verifyAndGetValue(ctx, JsonArray.class));
     }
 
     @Override
     public <V> Deserializer.Map<V> map(SerializationContext ctx, Endec<V> valueEndec) {
-        return new Map<>(ctx, valueEndec, ((JsonObject) this.getValue()));
+        return new Map<>(ctx, valueEndec, this.verifyAndGetValue(ctx, JsonObject.class));
     }
 
     @Override
-    public Deserializer.Struct struct() {
-        return new Struct((JsonObject) this.getValue());
+    public Deserializer.Struct struct(SerializationContext ctx) {
+        return new Struct(this.verifyAndGetValue(ctx, JsonObject.class));
+    }
+
+    // ---
+
+    private <T extends JsonElement> T verifyAndGetValue(SerializationContext ctx, Class<T> clazz) {
+        var value = getValue();
+
+        if (!clazz.isInstance(value)) {
+            ctx.throwMalformedInput("Expected " + clazz.getSimpleName() + ", got a " + value.getClass().getSimpleName());
+        }
+
+        return (T) value;
     }
 
     // ---

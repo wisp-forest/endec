@@ -152,7 +152,7 @@ public class DataInputDeserializer implements Deserializer<DataInput> {
     }
 
     @Override
-    public Struct struct() {
+    public Struct struct(SerializationContext ctx) {
         return new Sequence<>(null, null, 0);
     }
 
@@ -184,13 +184,16 @@ public class DataInputDeserializer implements Deserializer<DataInput> {
 
         @Override
         public V next() {
+            var value = this.valueEndec.decode(this.ctx.pushIndex(this.index), DataInputDeserializer.this);
+
             this.index++;
-            return this.valueEndec.decode(this.ctx, DataInputDeserializer.this);
+
+            return value;
         }
 
         @Override
         public <F> @Nullable F field(String name, SerializationContext ctx, Endec<F> endec, @Nullable Supplier<F> defaultValueFactory) {
-            return endec.decode(ctx, DataInputDeserializer.this);
+            return endec.decode(ctx.pushField(name), DataInputDeserializer.this);
         }
     }
 
@@ -221,9 +224,10 @@ public class DataInputDeserializer implements Deserializer<DataInput> {
         @Override
         public java.util.Map.Entry<String, V> next() {
             this.index++;
+            var key = DataInputDeserializer.this.readString(this.ctx);
             return java.util.Map.entry(
-                    DataInputDeserializer.this.readString(this.ctx),
-                    this.valueEndec.decode(this.ctx, DataInputDeserializer.this)
+                    key,
+                    this.valueEndec.decode(this.ctx.pushField(key), DataInputDeserializer.this)
             );
         }
     }

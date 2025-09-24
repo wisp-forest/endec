@@ -148,7 +148,7 @@ public class JavaSerializer extends RecursiveSerializer<Object> implements SelfD
         @Override
         public void element(V element) {
             JavaSerializer.this.frame(encoded -> {
-                this.elementEndec.encode(ctx, JavaSerializer.this, element);
+                this.elementEndec.encode(ctx.pushIndex(result.size()), JavaSerializer.this, element);
                 this.result.add(encoded.require("sequence element"));
             });
         }
@@ -176,7 +176,7 @@ public class JavaSerializer extends RecursiveSerializer<Object> implements SelfD
         @Override
         public void entry(String key, V value) {
             JavaSerializer.this.frame(encoded -> {
-                this.valueEndec.encode(ctx, JavaSerializer.this, value);
+                this.valueEndec.encode(ctx.pushField(key), JavaSerializer.this, value);
                 this.result.put(key, encoded.require("map value"));
             });
         }
@@ -198,7 +198,7 @@ public class JavaSerializer extends RecursiveSerializer<Object> implements SelfD
         @Override
         public <F> Serializer.Struct field(String name, SerializationContext ctx, Endec<F> endec, F value, boolean mayOmit) {
             JavaSerializer.this.frame(encoded -> {
-                endec.encode(ctx, JavaSerializer.this, value);
+                endec.encode(ctx.pushField(name), JavaSerializer.this, value);
 
                 var element = encoded.require("struct field");
 

@@ -130,7 +130,7 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
         @Override
         public void element(V element) {
             EdmSerializer.this.frame(encoded -> {
-                this.elementEndec.encode(ctx, EdmSerializer.this, element);
+                this.elementEndec.encode(ctx.pushIndex(result.size()), EdmSerializer.this, element);
                 this.result.add(encoded.require("sequence element"));
             });
         }
@@ -158,7 +158,7 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
         @Override
         public void entry(String key, V value) {
             EdmSerializer.this.frame(encoded -> {
-                this.valueEndec.encode(ctx, EdmSerializer.this, value);
+                this.valueEndec.encode(ctx.pushField(key), EdmSerializer.this, value);
                 this.result.put(key, encoded.require("map value"));
             });
         }
@@ -180,7 +180,7 @@ public class EdmSerializer extends RecursiveSerializer<EdmElement<?>> implements
         @Override
         public <F> Serializer.Struct field(String name, SerializationContext ctx, Endec<F> endec, F value, boolean mayOmit) {
             EdmSerializer.this.frame(encoded -> {
-                endec.encode(ctx, EdmSerializer.this, value);
+                endec.encode(ctx.pushField(name), EdmSerializer.this, value);
 
                 var element = encoded.require("struct field");
 

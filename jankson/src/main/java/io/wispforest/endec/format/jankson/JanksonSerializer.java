@@ -147,7 +147,7 @@ public class JanksonSerializer extends RecursiveSerializer<JsonElement> implemen
         @Override
         public void entry(String key, V value) {
             JanksonSerializer.this.frame(encoded -> {
-                this.valueEndec.encode(this.ctx, JanksonSerializer.this, value);
+                this.valueEndec.encode(this.ctx.pushField(key), JanksonSerializer.this, value);
                 this.result.put(key, encoded.require("map value"));
             });
         }
@@ -155,7 +155,7 @@ public class JanksonSerializer extends RecursiveSerializer<JsonElement> implemen
         @Override
         public <F> Struct field(String name, SerializationContext ctx, Endec<F> endec, F value, boolean mayOmit) {
             JanksonSerializer.this.frame(encoded -> {
-                endec.encode(ctx, JanksonSerializer.this, value);
+                endec.encode(ctx.pushField(name), JanksonSerializer.this, value);
 
                 var element = encoded.require("struct field");
 
@@ -200,7 +200,7 @@ public class JanksonSerializer extends RecursiveSerializer<JsonElement> implemen
         @Override
         public void element(V element) {
             JanksonSerializer.this.frame(encoded -> {
-                this.valueEndec.encode(this.ctx, JanksonSerializer.this, element);
+                this.valueEndec.encode(this.ctx.pushIndex(this.result.size()), JanksonSerializer.this, element);
                 this.result.add(encoded.require("sequence element"));
             });
         }

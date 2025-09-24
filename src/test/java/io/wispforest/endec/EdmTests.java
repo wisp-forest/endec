@@ -6,6 +6,7 @@ import io.wispforest.endec.format.edm.EdmElement;
 import io.wispforest.endec.format.edm.EdmIo;
 import io.wispforest.endec.format.edm.EdmSerializer;
 import io.wispforest.endec.impl.StructEndecBuilder;
+import io.wispforest.endec.impl.trace.EndecMalformedInputException;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
@@ -130,6 +131,18 @@ public class EdmTests {
         );
 
         Assertions.assertEquals(edmElement, decodeEdmElement(encodeEdmElement(edmElement)));
+    }
+
+    @Test
+    @DisplayName("malformed input exception")
+    public void malformedEdmInput() {
+        Assertions.assertThrows(EndecMalformedInputException.class, () -> {
+            Endec.INT.mapOf()
+                .decodeFully(
+                    EdmDeserializer::of,
+                    EdmElement.consumeMap(Map.of("a", EdmElement.string("test")))
+                );
+        }, "Malformed input at $.a: Expected a i32, got a string");
     }
 
     private static byte[] encodeEdmElement(EdmElement<?> edmElement) {

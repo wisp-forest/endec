@@ -57,17 +57,24 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
     public void encodeField(SerializationContext ctx, Serializer<?> serializer, Serializer.Struct struct, S instance) {
         try {
             struct.field(this.name, ctx.and(this.context), this.endec, this.getter.apply(instance), this.defaultValueFactory != null);
+        } catch (StructFieldException e) {
+            throw e;
         } catch (Exception e) {
-            throw new StructFieldException("Exception occurred when encoding a given StructField: [Field: " + this.name + "]", e);
+            throw ctx.pushField(name).<StructFieldException>exceptionWithTrace((trace) -> {
+                throw new StructFieldException("Exception occurred when encoding a given StructField: " + trace.toString(), e);
+            });
         }
     }
-
 
     public F decodeField(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct) {
         try {
             return struct.field(this.name, ctx.and(this.context), this.endec, this.defaultValueFactory);
+        } catch (StructFieldException e) {
+            throw e;
         } catch (Exception e) {
-            throw new StructFieldException("Exception occurred when decoding a given StructField: [Field: " + this.name + "]", e);
+            throw ctx.pushField(name).<StructFieldException>exceptionWithTrace((trace) -> {
+                throw new StructFieldException("Exception occurred when decoding a given StructField: " + trace.toString(), e);
+            });
         }
     }
 
@@ -147,8 +154,12 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
                 F f = struct.field(this.name, ctx.and(this.context), this.endec, this.defaultValueFactory);
 
                 setter.accept(s, f);
+            } catch (StructFieldException e) {
+                throw e;
             } catch (Exception e) {
-                throw new StructFieldException("Exception occurred when decoding a given StructField: [Field: " + this.name + "]", e);
+                throw ctx.pushField(name).<StructFieldException>exceptionWithTrace((trace) -> {
+                    throw new StructFieldException("Exception occurred when decoding a given StructField: " + trace.toString(), e);
+                });
             }
         }
     }
