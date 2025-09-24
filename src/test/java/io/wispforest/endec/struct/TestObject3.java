@@ -23,7 +23,7 @@ public class TestObject3 {
         this.field6 = Map.of("weee", 2);
         this.field7 = new int[]{1, 2, 3};
         this.field8 = Optional.empty();
-        this.field9 = new TestRecord(2, "whatever");
+        this.field9 = new TestRecord(2, "whatever", new TestObject6<>(1));
         this.field10 = TestEnum.MAYBE;
     }
 

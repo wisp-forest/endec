@@ -10,7 +10,7 @@ public class TestObject1 {
     public Map<String, Integer> field6 = Map.of("weee", 2);
     public int[]                field7 = new int[]{1, 2, 3};
     public Optional<String>     field8 = Optional.empty();
-    public TestRecord           field9 = new TestRecord(2, "whatever");
+    public TestRecord           field9 = new TestRecord(2, "whatever", new TestObject6<>(1));
     public TestEnum             field10 = TestEnum.MAYBE;
 
     private transient String field11 = "";

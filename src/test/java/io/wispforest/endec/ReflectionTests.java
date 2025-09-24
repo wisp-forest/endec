@@ -34,7 +34,7 @@ public class ReflectionTests {
             return;
         }
 
-        var obj = new TestRecord(0, null);
+        var obj = new TestRecord(0, null, new TestObject6<>(1));
 
         var element = endec.encodeFully(SerializationContext.empty(), EdmSerializer::of, obj);
 

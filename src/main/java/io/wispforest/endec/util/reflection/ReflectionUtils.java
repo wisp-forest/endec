@@ -1,5 +1,6 @@
 package io.wispforest.endec.util.reflection;
 
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.*;
@@ -10,6 +11,7 @@ import java.util.function.Predicate;
 
 
 /// Mainly internal use collection of utility methods pertaining to reflection
+@ApiStatus.Internal
 public class ReflectionUtils {
 
     public static Type getBaseType(AnnotatedElement annotatedElement) {
@@ -33,7 +35,15 @@ public class ReflectionUtils {
             return component.getAnnotatedType();
         }
 
-        throw new IllegalStateException("Unable to get the required AnnotatedType from the follow AnnotatedElement: " + annotatedElement.toString());
+        return null;
+    }
+
+    public static AnnotatedType getAnnotatedTypeOrThrow(AnnotatedElement annotatedElement) {
+        var type = getAnnotatedType(annotatedElement);
+
+        if(type == null) throw new IllegalStateException("Unable to get the required AnnotatedType from the follow AnnotatedElement: " + annotatedElement.toString());
+
+        return type;
     }
 
     public static List<Class<?>> unpackClassStack(Class<?> clazz) {

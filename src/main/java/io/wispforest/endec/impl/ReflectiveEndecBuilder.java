@@ -105,7 +105,7 @@ public class ReflectiveEndecBuilder {
     //--
 
     public SerializationContext getContext(AnnotatedElement annotatedElement) {
-        return getContext(ReflectionUtils.getAnnotatedType(annotatedElement));
+        return getContext(ReflectionUtils.getAnnotatedTypeOrThrow(annotatedElement));
     }
 
     private SerializationContext getContext(AnnotatedType annotatedType) {
@@ -148,7 +148,7 @@ public class ReflectiveEndecBuilder {
     }
 
     public Endec<?> getAnnotated(AnnotatedElement annotatedElement, @Nullable Type baseType) {
-        var endec = getAnnotated(ReflectionUtils.getAnnotatedType(annotatedElement), baseType);
+        var endec = getAnnotated(ReflectionUtils.getAnnotatedTypeOrThrow(annotatedElement), baseType);
 
         // TODO: ATTEMPT TO KEEP BINARY COMPAT WITH OLDER ENDEC VERSIONS
         if (annotatedElement instanceof RecordComponent component && component.isAnnotationPresent(NullableComponent.class)) {
@@ -185,22 +185,31 @@ public class ReflectiveEndecBuilder {
             var parameterizedType = ((ParameterizedType) type);
 
             if (parameterizedType.getRawType() instanceof Class<?> clazz) {
-                if (clazz.equals(Map.class)) {
-                    endec = annotatedTypeArgs[0].getType() == String.class
+                // Allow for overriding all types if needed
+                endec = this.classToEndec.get(clazz);
+
+                if (endec == null) {
+                    if (clazz.equals(Map.class)) {
+                        endec = annotatedTypeArgs[0].getType() == String.class
                             ? this.getAnnotated(annotatedTypeArgs[1]).mapOf()
                             : Endec.map(this.getAnnotated(annotatedTypeArgs[0]), this.getAnnotated(annotatedTypeArgs[1]));
-                } else if (clazz.equals(List.class)) {
-                    endec = this.getAnnotated(annotatedTypeArgs[0]).listOf();
-                } else if (clazz.equals(Set.class)) {
-                    endec = this.getAnnotated(annotatedTypeArgs[0]).setOf();
-                } else if (clazz.equals(Optional.class)) {
-                    endec = this.getAnnotated(annotatedTypeArgs[0]).optionalOf();
-                } else if(isGenericObject(clazz)) {
-                    endec = ObjectEndec.create(this, clazz, type);
-                } else {
-                    endec = this.getOrNull(clazz);
+                    } else if (clazz.equals(List.class)) {
+                        endec = this.getAnnotated(annotatedTypeArgs[0]).listOf();
+                    } else if (clazz.equals(Set.class)) {
+                        endec = this.getAnnotated(annotatedTypeArgs[0]).setOf();
+                    } else if (clazz.equals(Optional.class)) {
+                        endec = this.getAnnotated(annotatedTypeArgs[0]).optionalOf();
+                    } else if (Record.class.isAssignableFrom(clazz)) {
+                        endec = RecordEndec.create(this, (Class<? extends Record>) clazz, parameterizedType.getActualTypeArguments());
+                    } else if (isGenericObject(clazz)) {
+                        endec = ObjectEndec.create(this, clazz, parameterizedType.getActualTypeArguments());
+                    } else {
+                        endec = this.getOrNull(clazz);
+                    }
                 }
             }
+        } else {
+            throw new IllegalStateException("Unable to handle the given AnnotatedType as it was not a AnnotatedArrayType, AnnotatedParameterizedType or have a raw type of Class: " + annotatedType);
         }
 
         if (endec == null) {
@@ -242,44 +251,65 @@ public class ReflectiveEndecBuilder {
      */
     @SuppressWarnings("unchecked")
     public Endec<?> get(Type type) {
-        if (type instanceof Class<?> clazz) return this.get(clazz);
-        if (type instanceof AnnotatedElement annotatedElement) return this.getAnnotated(annotatedElement);
+        if (type instanceof AnnotatedElement annotatedElement) {
+            var annotatedType = ReflectionUtils.getAnnotatedType(annotatedElement);
 
-        var parameterized = (ParameterizedType) type;
-        var raw = (Class<?>) parameterized.getRawType();
-        var typeArgs = parameterized.getActualTypeArguments();
+            if (annotatedType != null) {
+                return this.getAnnotated(annotatedElement);
+            }
+        }
 
-        if (raw == Map.class) {
-            return typeArgs[0] == String.class
+        Class<?> raw;
+        @Nullable Type[] typeArgs;
+
+        if (type instanceof Class<?> clazz) {
+            raw = clazz;
+            typeArgs = null;
+        } else if (type instanceof ParameterizedType parameterized) {
+            raw = (Class<?>) parameterized.getRawType();
+            typeArgs = parameterized.getActualTypeArguments();
+        } else {
+            throw new IllegalStateException("Unable to handle the given type as it was not either a AnnotatedElement, Class, or ParameterizedType: " + type);
+        }
+
+        // Allow for overriding all types if needed
+        var endec = (Endec<?>) this.classToEndec.get(raw);
+
+        if (endec != null) return endec;
+
+        if (typeArgs != null) {
+            if (raw == Map.class) {
+                return typeArgs[0] == String.class
                     ? this.get(typeArgs[1]).mapOf()
                     : Endec.map(this.get(typeArgs[0]), this.get(typeArgs[1]));
-        }
+            }
 
-        if (raw == List.class) {
-            return this.get(typeArgs[0]).listOf();
-        }
+            if (raw == List.class) {
+                return this.get(typeArgs[0]).listOf();
+            }
 
-        if (raw == Set.class) {
-            //noinspection rawtypes,Convert2MethodRef
-            return this.get(typeArgs[0]).listOf().<Set>xmap(
+            if (raw == Set.class) {
+                //noinspection rawtypes,Convert2MethodRef
+                return this.get(typeArgs[0]).listOf().<Set>xmap(
                     list -> (Set<?>) new HashSet<>(list),
                     set -> List.copyOf(set)
-            );
+                );
+            }
+
+            if (raw == Optional.class) {
+                return this.get(typeArgs[0]).optionalOf();
+            }
+
+            if (Record.class.isAssignableFrom(raw)) {
+                return RecordEndec.create(this, (Class<? extends Record>) raw, typeArgs);
+            }
+
+            if (isGenericObject(raw)) {
+                return ObjectEndec.create(this, raw, typeArgs);
+            }
         }
 
-        if (raw == Optional.class) {
-            return this.get(typeArgs[0]).optionalOf();
-        }
-
-        if (Record.class.isAssignableFrom(raw)) {
-            return RecordEndec.create(this, (Class<? extends Record>) raw, typeArgs);
-        }
-
-        if (isGenericObject(raw)) {
-            return ObjectEndec.create(this, raw, typeArgs);
-        }
-
-        return this.get(raw);
+        return get(raw);
     }
 
     private static boolean isGenericObject(Class<?> clazz) {
