@@ -3,6 +3,7 @@ package io.wispforest.endec;
 public sealed abstract class SerializationAttribute permits SerializationAttribute.Marker, SerializationAttribute.WithValue {
 
     public final String name;
+
     protected SerializationAttribute(String name) {
         this.name = name;
     }
@@ -29,6 +30,11 @@ public sealed abstract class SerializationAttribute permits SerializationAttribu
         public Object value() {
             return null;
         }
+
+        @Override
+        public String toString() {
+            return "Marker[Name: '" + name + "']";
+        }
     }
 
     public static final class WithValue<T> extends SerializationAttribute {
@@ -47,7 +53,17 @@ public sealed abstract class SerializationAttribute permits SerializationAttribu
                 public Object value() {
                     return value;
                 }
+
+                @Override
+                public String toString() {
+                    return "Instance[Name: '" + name + "', Value: " + value + "]";
+                }
             };
+        }
+
+        @Override
+        public String toString() {
+            return "ValueAttribute[Name: '" + name + "']";
         }
     }
 

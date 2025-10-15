@@ -31,4 +31,13 @@ public final class KeyedEndec<F> {
     public F defaultValue() {
         return this.defaultValueFactory.get();
     }
+
+    public Supplier<F> defaultValueFactory() {
+        return this.defaultValueFactory;
+    }
+
+    @Override
+    public String toString() {
+        return "KeyedEndec[Key: '" + key + "', Endec: " + endec + "]";
+    }
 }

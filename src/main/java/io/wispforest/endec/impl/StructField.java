@@ -78,6 +78,11 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
         }
     }
 
+    @Override
+    public String toString() {
+        return "StructField[Name: '" + name + "', Endec: " + endec + (!context.isEmpty() ? ", Context: " + context : "") + "]";
+    }
+
     ///
     /// A variant of [StructField] that will flatten the Fields data using a passed [StructEndec]
     /// instead of encoding it as field.
@@ -113,6 +118,11 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
         @Override
         public F decodeField(SerializationContext ctx, Deserializer<?> deserializer, Deserializer.Struct struct) {
             return this.endec().decodeStruct(ctx.and(this.context), deserializer, struct);
+        }
+
+        @Override
+        public String toString() {
+            return "FlatStructField[Endec: " + endec + (!context.isEmpty() ? ", Context: " + context : "") + "]";
         }
     }
 
@@ -161,6 +171,11 @@ public sealed class StructField<S, F> permits StructField.Flat, StructField.Muta
                     throw new StructFieldException("Exception occurred when decoding a given StructField: " + trace.toString(), e);
                 });
             }
+        }
+
+        @Override
+        public String toString() {
+            return "MutableStructField[Name: '" + name + "', Endec: " + endec + (!context.isEmpty() ? ", Context: " + context : "") + "]";
         }
     }
 }

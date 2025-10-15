@@ -146,4 +146,15 @@ public final class SerializationContext {
 
         return attributeValues;
     }
+
+    //--
+
+
+    @Override
+    public String toString() {
+        return "SerializationContext[" +
+            "Attributes: " + attributeValues +
+            ", SuppressedAttributes: " + suppressedAttributes +
+            ", CurrentTrace: " + trace + "]";
+    }
 }
