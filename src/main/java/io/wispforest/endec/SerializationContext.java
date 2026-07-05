@@ -120,6 +120,10 @@ public final class SerializationContext {
 
     //--
 
+    public EndecTrace trace() {
+        return this.trace;
+    }
+
     public SerializationContext pushField(String fieldName) {
         return new SerializationContext(this.attributeValues, this.suppressedAttributes, this.trace.push(new FieldTraceElement(fieldName)));
     }

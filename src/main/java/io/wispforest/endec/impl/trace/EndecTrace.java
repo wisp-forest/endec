@@ -1,6 +1,7 @@
 package io.wispforest.endec.impl.trace;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -13,6 +14,10 @@ public class EndecTrace {
 
     public EndecTrace() {
         this(List.of());
+    }
+
+    public List<EndecTraceElement> elements() {
+        return Collections.unmodifiableList(this.elements);
     }
 
     public EndecTrace push(EndecTraceElement element) {
