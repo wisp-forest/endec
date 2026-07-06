@@ -547,7 +547,11 @@ public interface Endec<T> {
     }
 
     default Endec<T> optionalOf(Supplier<T> defaultValue, Predicate<T> isDefaultValue) {
-        return new OptionalEndec<T>(this.optionalOf(), defaultValue, isDefaultValue);
+        return optionalOf(defaultValue, isDefaultValue, false);
+    }
+
+    default Endec<T> optionalOf(Supplier<T> defaultValue, Predicate<T> isDefaultValue, boolean mayOmitForField) {
+        return new OptionalEndec<T>(this.optionalOf(), defaultValue, isDefaultValue, mayOmitForField);
     }
 
     // --- Conversion ---
@@ -590,7 +594,7 @@ public interface Endec<T> {
     }
 
     default <S> StructField<S, @Nullable T> nullableFieldOf(String name, Function<S, @Nullable T> getter, boolean mayOmitNullValues) {
-        return optionalFieldOf(name, getter, (T) null, mayOmitNullValues ? Objects::isNull : null);
+        return this.optionalOf(() -> null, mayOmitNullValues ? Objects::isNull : null, true).fieldOf(name, getter);
     }
 
     default <S> StructField<S, T> optionalFieldOf(String name, Function<S, T> getter, @Nullable T defaultValue) {
@@ -600,7 +604,7 @@ public interface Endec<T> {
     default <S> StructField<S, T> optionalFieldOf(String name, Function<S, T> getter, Supplier<@Nullable T> defaultValue) {
         Objects.requireNonNull(defaultValue, "defaultValue Supplier was found to be null which is not permitted for optionalFieldOf");
 
-        return new StructField<>(name, this.optionalOf(defaultValue), getter, defaultValue);
+        return this.optionalOf(defaultValue, null, true).fieldOf(name, getter);
     }
 
     default <S> StructField<S, T> optionalFieldOf(String name, Function<S, T> getter, @Nullable T defaultValue, Predicate<T> isDefaultValue) {
@@ -611,7 +615,7 @@ public interface Endec<T> {
         Objects.requireNonNull(defaultValue, "defaultValue Supplier was found to be null which is not permitted for optionalFieldOf");
         Objects.requireNonNull(isDefaultValue, "isDefaultValue Predicate was found to be null which is not permitted for optionalFieldOf");
 
-        return new StructField<>(name, this.optionalOf(defaultValue, isDefaultValue), getter, defaultValue);
+        return this.optionalOf(defaultValue, isDefaultValue, true).fieldOf(name, getter);
     }
 
     @FunctionalInterface
